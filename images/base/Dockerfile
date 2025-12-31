@@ -184,8 +184,12 @@ RUN : "${TARGETARCH:?TARGETARCH is required for Node.js install}" && \
     rm -f "/tmp/${node_dist}.tar.xz" /tmp/SHASUMS256.txt && \
     # Update npm to latest and fix CVE-2025-64756 (glob command injection vulnerability)
     npm install -g npm@latest && \
-    # Update glob within npm's bundled dependencies to patched version
-    npm update glob --save --prefix /usr/local/lib/node_modules/npm
+    # Replace vulnerable glob in npm's bundled dependencies with patched version
+    rm -rf /usr/local/lib/node_modules/npm/node_modules/glob && \
+    npm pack glob@10.5.0 && \
+    mkdir -p /usr/local/lib/node_modules/npm/node_modules/glob && \
+    tar -xzf glob-10.5.0.tgz -C /usr/local/lib/node_modules/npm/node_modules/glob --strip-components=1 && \
+    rm -f glob-10.5.0.tgz
 WORKDIR /
 
 # =============================================================================
