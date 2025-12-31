@@ -1,0 +1,54 @@
+// Package mux provides an abstraction over terminal multiplexer operations.
+// It defines a generic interface that can be implemented by different backends
+// (Zellij, tmux, etc.) to manage persistent, attachable terminal sessions.
+package mux
+
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+// Sentinel errors for multiplexer operations.
+var (
+	ErrSessionNotFound = errors.New("session not found")
+	ErrSessionExists   = errors.New("session already exists")
+	ErrAttachFailed    = errors.New("failed to attach to session")
+)
+
+// Session represents a multiplexer session.
+type Session struct {
+	ID        string    // Unique session identifier (multiplexer-assigned)
+	Name      string    // Human-readable name
+	CreatedAt time.Time // Creation timestamp
+}
+
+// CreateSessionOpts configures session creation.
+type CreateSessionOpts struct {
+	Name    string   // Session name (required)
+	Command []string // Initial command to run (optional, defaults to shell)
+	Cwd     string   // Working directory (optional)
+	Env     []string // Environment variables (KEY=VALUE format)
+}
+
+// Multiplexer provides terminal multiplexer operations.
+//
+//go:generate go run github.com/matryer/moq@latest -pkg mocks -out mocks/multiplexer.go . Multiplexer
+type Multiplexer interface {
+	// CreateSession creates a new multiplexer session.
+	// Returns ErrSessionExists if a session with the same name already exists.
+	CreateSession(ctx context.Context, opts CreateSessionOpts) (*Session, error)
+
+	// AttachSession attaches to an existing session.
+	// This is a blocking operation that takes over the terminal.
+	// Returns ErrSessionNotFound if session doesn't exist.
+	// Returns ErrAttachFailed if attachment fails.
+	AttachSession(ctx context.Context, sessionName string) error
+
+	// ListSessions returns all active sessions.
+	ListSessions(ctx context.Context) ([]Session, error)
+
+	// KillSession terminates a session.
+	// Returns ErrSessionNotFound if session doesn't exist.
+	KillSession(ctx context.Context, sessionName string) error
+}
