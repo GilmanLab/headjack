@@ -38,6 +38,7 @@ ENV EDITOR=vim
 # Base System Setup
 # =============================================================================
 
+# hadolint ignore=DL3008
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     # Locale support
     locales \
@@ -73,6 +74,7 @@ RUN update-alternatives --set iptables /usr/sbin/iptables-legacy && \
 # Common Tooling
 # =============================================================================
 
+# hadolint ignore=DL3008
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     # Version control
     git \
@@ -112,6 +114,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 # GitHub CLI (gh)
 # =============================================================================
 
+# hadolint ignore=DL3008
 RUN keyring=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
     tmpdir=$(mktemp -d) && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /tmp/githubcli-archive-keyring.gpg && \
@@ -142,6 +145,7 @@ RUN : "${TARGETARCH:?TARGETARCH is required for yq install}" && \
 # Docker CE
 # =============================================================================
 
+# hadolint ignore=DL3008
 RUN keyring=/usr/share/keyrings/docker-archive-keyring.gpg && \
     tmpdir=$(mktemp -d) && \
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /tmp/docker.gpg && \
@@ -165,6 +169,7 @@ RUN systemctl enable docker
 # Node.js (required for Agent CLIs)
 # =============================================================================
 
+WORKDIR /tmp
 RUN : "${TARGETARCH:?TARGETARCH is required for Node.js install}" && \
     case "${TARGETARCH}" in \
         amd64) node_arch="x64" ;; \
@@ -172,12 +177,12 @@ RUN : "${TARGETARCH:?TARGETARCH is required for Node.js install}" && \
         *) echo "Unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
     esac && \
     node_dist="node-v${NODE_VERSION}-linux-${node_arch}" && \
-    cd /tmp && \
     curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${node_dist}.tar.xz" && \
     curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" && \
     grep " ${node_dist}.tar.xz$" SHASUMS256.txt | sha256sum -c - && \
     tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 && \
     rm -f "/tmp/${node_dist}.tar.xz" /tmp/SHASUMS256.txt
+WORKDIR /
 
 # =============================================================================
 # Agent CLIs
@@ -197,22 +202,20 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 
 # Check if user/group with these IDs already exist, reuse or create as needed
-RUN if getent passwd $USER_UID > /dev/null 2>&1; then \
+RUN if getent passwd "$USER_UID" > /dev/null 2>&1; then \
         # User with this UID exists, get their name and rename if needed
-        existing_user=$(getent passwd $USER_UID | cut -d: -f1); \
+        existing_user=$(getent passwd "$USER_UID" | cut -d: -f1); \
         if [ "$existing_user" != "$USERNAME" ]; then \
-            usermod -l $USERNAME -d /home/$USERNAME -m $existing_user; \
+            usermod -l "$USERNAME" -d "/home/$USERNAME" -m "$existing_user"; \
         fi; \
     else \
         # Create group if needed
-        if ! getent group $USER_GID > /dev/null 2>&1; then \
-            groupadd --gid $USER_GID $USERNAME; \
-        fi; \
+        getent group "$USER_GID" > /dev/null 2>&1 || groupadd --gid "$USER_GID" "$USERNAME"; \
         # Create user
-        useradd --uid $USER_UID --gid $USER_GID -m $USERNAME; \
+        useradd --uid "$USER_UID" --gid "$USER_GID" -m "$USERNAME"; \
     fi; \
     if [ "${ENABLE_DOCKER_GROUP}" = "1" ]; then \
-        usermod -aG docker $USERNAME; \
+        usermod -aG docker "$USERNAME"; \
     fi
 
 # =============================================================================
@@ -250,6 +253,7 @@ RUN case "${TARGETARCH}" in \
 # Shell Configuration
 # =============================================================================
 
+# hadolint ignore=SC2016
 RUN { \
     echo ''; \
     echo '# pyenv'; \
