@@ -1,0 +1,14 @@
+# Trivy Ignore File for Base Image
+# See: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/
+
+# GitHub CLI (gh) false positives
+# The gh CLI binary v2.83.2 contains the fix for CVE-2024-52308 (fixed in v2.62.0),
+# but Trivy reports a Go pseudo-version from the internal build info rather than
+# the actual release version.
+CVE-2024-52308
+
+# The sigstore/timestamp-authority CVE is a transitive Go dependency embedded in
+# the gh CLI binary. This can only be fixed by the gh CLI maintainers updating
+# their dependencies. The vulnerability is a DoS via excessive OID or Content-Type,
+# which has limited impact in the context of a dev container CLI tool.
+CVE-2025-66564

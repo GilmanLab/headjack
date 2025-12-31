@@ -182,15 +182,7 @@ RUN : "${TARGETARCH:?TARGETARCH is required for Node.js install}" && \
     grep " ${node_dist}.tar.xz$" SHASUMS256.txt | sha256sum -c - && \
     tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 && \
     rm -f "/tmp/${node_dist}.tar.xz" /tmp/SHASUMS256.txt && \
-    # Update npm to latest and fix CVE-2025-64756 (glob command injection vulnerability)
-    npm install -g npm@latest && \
-    # Replace vulnerable glob in npm's bundled dependencies with patched version
-    # Download directly from npm registry since npm pack requires glob to work
-    curl -fsSL "https://registry.npmjs.org/glob/-/glob-10.5.0.tgz" -o /tmp/glob-10.5.0.tgz && \
-    rm -rf /usr/local/lib/node_modules/npm/node_modules/glob && \
-    mkdir -p /usr/local/lib/node_modules/npm/node_modules/glob && \
-    tar -xzf /tmp/glob-10.5.0.tgz -C /usr/local/lib/node_modules/npm/node_modules/glob --strip-components=1 && \
-    rm -f /tmp/glob-10.5.0.tgz
+    npm install -g npm@latest
 WORKDIR /
 
 # =============================================================================
@@ -201,6 +193,27 @@ RUN npm install -g \
     @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} \
     @google/gemini-cli@${GEMINI_CLI_VERSION} \
     @openai/codex@${CODEX_CLI_VERSION}
+
+# =============================================================================
+# CVE-2025-64756 Fix: Replace vulnerable glob in all node_modules
+# The glob package has a command injection vulnerability fixed in 10.5.0+
+# This must run AFTER all npm packages are installed
+# =============================================================================
+
+RUN curl -fsSL "https://registry.npmjs.org/glob/-/glob-10.5.0.tgz" -o /tmp/glob-10.5.0.tgz && \
+    find /usr/local/lib/node_modules -type d -name "glob" -path "*/node_modules/glob" | while read -r glob_dir; do \
+        if [ -f "${glob_dir}/package.json" ]; then \
+            version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "${glob_dir}/package.json" | head -1 | grep -o '[0-9][0-9.]*'); \
+            case "$version" in \
+                10.[0-4].*|[0-9].*) \
+                    echo "Patching glob at ${glob_dir} (version ${version})"; \
+                    rm -rf "${glob_dir:?}"/*; \
+                    tar -xzf /tmp/glob-10.5.0.tgz -C "${glob_dir}" --strip-components=1; \
+                    ;; \
+            esac; \
+        fi; \
+    done && \
+    rm -f /tmp/glob-10.5.0.tgz
 
 # =============================================================================
 # Create non-root user
