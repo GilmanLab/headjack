@@ -118,13 +118,14 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 
 RUN : "${TARGETARCH:?TARGETARCH is required for gh install}" && \
     gh_archive="gh_${GH_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" && \
+    gh_dir="gh_${GH_CLI_VERSION}_linux_${TARGETARCH}" && \
     curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/${gh_archive}" -o "/tmp/${gh_archive}" && \
     curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt && \
     gh_sha256="$(sha256sum "/tmp/${gh_archive}" | awk '{print $1}')" && \
     grep "${gh_archive}" /tmp/gh_checksums.txt | grep -q "${gh_sha256}" && \
     tar -xzf "/tmp/${gh_archive}" -C /tmp && \
-    install -m 0755 "/tmp/gh_${GH_CLI_VERSION}/bin/gh" /usr/bin/gh && \
-    rm -rf "/tmp/${gh_archive}" /tmp/gh_checksums.txt "/tmp/gh_${GH_CLI_VERSION}"
+    install -m 0755 "/tmp/${gh_dir}/bin/gh" /usr/bin/gh && \
+    rm -rf "/tmp/${gh_archive}" /tmp/gh_checksums.txt "/tmp/${gh_dir}"
 
 # =============================================================================
 # yq (YAML processor)
