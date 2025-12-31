@@ -13,7 +13,6 @@ ARG TARGETARCH
 ARG YQ_VERSION=v4.50.1
 ARG NODE_VERSION=22.21.1
 ARG GH_CLI_VERSION=2.83.2
-ARG GH_CLI_GPG_FINGERPRINT=2C6106201985B60E6C7AC87323F3D4EA75716059
 ARG DOCKER_GPG_FINGERPRINT=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 ARG PYENV_VERSION=v2.6.17
 ARG NODENV_VERSION=v1.6.2
@@ -113,19 +112,19 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 
 # =============================================================================
 # GitHub CLI (gh)
+# Install from GitHub releases to ensure we get the official pre-built binary
+# with properly versioned dependencies (fixes CVE-2024-52308, CVE-2025-66564)
 # =============================================================================
 
-RUN keyring=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
-    tmpdir=$(mktemp -d) && \
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /tmp/githubcli-archive-keyring.gpg && \
-    GNUPGHOME="${tmpdir}" gpg --batch --show-keys --with-colons /tmp/githubcli-archive-keyring.gpg | \
-        awk -F: '/^fpr:/ {print $10; exit}' | grep -qx "${GH_CLI_GPG_FINGERPRINT}" && \
-    gpg --dearmor -o "${keyring}" /tmp/githubcli-archive-keyring.gpg && \
-    chmod go+r "${keyring}" && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gh="${GH_CLI_VERSION}" && \
-    rm -rf /var/lib/apt/lists/* /tmp/githubcli-archive-keyring.gpg "${tmpdir}"
+RUN : "${TARGETARCH:?TARGETARCH is required for gh install}" && \
+    gh_archive="gh_${GH_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" && \
+    curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/${gh_archive}" -o "/tmp/${gh_archive}" && \
+    curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_checksums.txt" -o /tmp/gh_checksums.txt && \
+    gh_sha256="$(sha256sum "/tmp/${gh_archive}" | awk '{print $1}')" && \
+    grep "${gh_archive}" /tmp/gh_checksums.txt | grep -q "${gh_sha256}" && \
+    tar -xzf "/tmp/${gh_archive}" -C /tmp && \
+    install -m 0755 "/tmp/gh_${GH_CLI_VERSION}/bin/gh" /usr/bin/gh && \
+    rm -rf "/tmp/${gh_archive}" /tmp/gh_checksums.txt "/tmp/gh_${GH_CLI_VERSION}"
 
 # =============================================================================
 # yq (YAML processor)
@@ -182,8 +181,11 @@ RUN : "${TARGETARCH:?TARGETARCH is required for Node.js install}" && \
     grep " ${node_dist}.tar.xz$" SHASUMS256.txt | sha256sum -c - && \
     tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 && \
     rm -f "/tmp/${node_dist}.tar.xz" /tmp/SHASUMS256.txt && \
-    # Update npm to fix CVE-2025-64756 (glob command injection vulnerability)
-    npm install -g npm@latest
+    # Update npm to latest and fix CVE-2025-64756 (glob command injection vulnerability)
+    npm install -g npm@latest && \
+    # Update glob within npm's bundled dependencies to patched version
+    cd /usr/local/lib/node_modules/npm && \
+    npm update glob --save
 WORKDIR /
 
 # =============================================================================
