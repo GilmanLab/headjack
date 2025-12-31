@@ -184,8 +184,7 @@ RUN : "${TARGETARCH:?TARGETARCH is required for Node.js install}" && \
     # Update npm to latest and fix CVE-2025-64756 (glob command injection vulnerability)
     npm install -g npm@latest && \
     # Update glob within npm's bundled dependencies to patched version
-    cd /usr/local/lib/node_modules/npm && \
-    npm update glob --save
+    npm update glob --save --prefix /usr/local/lib/node_modules/npm
 WORKDIR /
 
 # =============================================================================
