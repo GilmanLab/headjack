@@ -43,7 +43,17 @@ enabling safe parallel development across multiple branches.`,
 		if err := checkDependencies(); err != nil {
 			return err
 		}
-		if err := initManager(); err != nil {
+
+		// Get multiplexer override from flag
+		muxOverride, err := cmd.Flags().GetString("multiplexer")
+		if err != nil {
+			return fmt.Errorf("get multiplexer flag: %w", err)
+		}
+		if muxOverride != "" && !config.IsValidMultiplexer(muxOverride) {
+			return fmt.Errorf("invalid multiplexer %q (valid: tmux, zellij)", muxOverride)
+		}
+
+		if err := initManager(muxOverride); err != nil {
 			return err
 		}
 
@@ -65,6 +75,7 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().String("multiplexer", "", "terminal multiplexer to use (tmux, zellij)")
 }
 
 func initConfig() {
@@ -103,7 +114,8 @@ func checkDependencies() error {
 }
 
 // initManager initializes the instance manager with all dependencies.
-func initManager() error {
+// muxOverride can be used to override the configured multiplexer.
+func initManager(muxOverride string) error {
 	var worktreesDir string
 	var catalogPath string
 	var logsDir string
@@ -128,7 +140,22 @@ func initManager() error {
 	store := catalog.NewStore(catalogPath)
 	runtime := container.NewAppleRuntime(executor)
 	opener := git.NewOpener(executor)
-	mux := multiplexer.NewZellij(executor)
+
+	// Select multiplexer: CLI flag > config > default (tmux)
+	var mux multiplexer.Multiplexer
+	muxName := "tmux" // default
+	if appConfig != nil && appConfig.Default.Multiplexer != "" {
+		muxName = appConfig.Default.Multiplexer
+	}
+	if muxOverride != "" {
+		muxName = muxOverride
+	}
+	switch muxName {
+	case "zellij":
+		mux = multiplexer.NewZellij(executor)
+	default:
+		mux = multiplexer.NewTmux(executor)
+	}
 
 	mgr = instance.NewManager(store, runtime, opener, mux, instance.ManagerConfig{
 		WorktreesDir: worktreesDir,
