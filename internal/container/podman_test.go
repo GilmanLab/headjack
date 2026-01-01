@@ -112,10 +112,11 @@ func TestPodmanRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewPodmanRuntime(mockExec, PodmanConfig{Privileged: true})
+		runtime := NewPodmanRuntime(mockExec, PodmanConfig{})
 		_, err := runtime.Run(ctx, &RunConfig{
 			Name:  "test",
 			Image: "ubuntu",
+			Flags: []string{"--privileged"},
 		})
 
 		require.NoError(t, err)

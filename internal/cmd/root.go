@@ -170,17 +170,9 @@ func initManager(muxOverride string) error {
 	}
 	switch runtimeName {
 	case runtimeNameApple:
-		appleCfg := container.AppleConfig{}
-		if appConfig != nil {
-			appleCfg.Privileged = appConfig.Runtime.Privileged
-		}
-		runtime = container.NewAppleRuntime(executor, appleCfg)
+		runtime = container.NewAppleRuntime(executor, container.AppleConfig{})
 	default:
-		podmanCfg := container.PodmanConfig{}
-		if appConfig != nil {
-			podmanCfg.Privileged = appConfig.Runtime.Privileged
-		}
-		runtime = container.NewPodmanRuntime(executor, podmanCfg)
+		runtime = container.NewPodmanRuntime(executor, container.PodmanConfig{})
 	}
 
 	opener := git.NewOpener(executor)

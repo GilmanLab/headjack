@@ -105,6 +105,12 @@ runtime:
 
 **Merge behavior:** When both image labels and config specify the same flag, the config value wins. This allows users to override image defaults without modifying the image.
 
+### Limitations
+
+**Flag format:** All flags are rendered in `--key=value` format. Short-form flags (e.g., `-m 2g`) and flags requiring separate arguments (e.g., `--memory 2g`) are not supported. Use long-form equals syntax instead.
+
+**Boolean false in labels:** Setting `key=false` in image labels will omit the flag entirely. This works correctly when omission is equivalent to disabling the feature, but cannot express explicit `--key=false` for flags that require it.
+
 ### Custom Images
 
 When creating custom images, you can set these labels to control runtime behavior:

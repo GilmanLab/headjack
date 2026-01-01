@@ -17,7 +17,8 @@ import (
 
 // PodmanConfig holds Podman-specific runtime configuration.
 type PodmanConfig struct {
-	Privileged bool // Run containers in privileged mode
+	// Currently empty - all flags go through RunConfig.Flags after merging
+	// at the manager level. Kept for future runtime-specific settings.
 }
 
 type podmanRuntime struct {
@@ -43,10 +44,6 @@ func podmanError(operation string, result *exec.Result, err error) error {
 
 func (r *podmanRuntime) Run(ctx context.Context, cfg *RunConfig) (*Container, error) {
 	args := []string{"run", "--detach", "--name", cfg.Name}
-
-	if r.config.Privileged {
-		args = append(args, "--privileged")
-	}
 
 	// Add merged flags (image labels + config, merged by manager)
 	args = append(args, cfg.Flags...)

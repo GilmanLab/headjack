@@ -112,10 +112,11 @@ func TestAppleRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec, AppleConfig{Privileged: true})
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.Run(ctx, &RunConfig{
 			Name:  "test",
 			Image: "ubuntu",
+			Flags: []string{"--privileged"},
 		})
 
 		require.NoError(t, err)

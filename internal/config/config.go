@@ -88,9 +88,8 @@ type StorageConfig struct {
 
 // RuntimeConfig holds container runtime configuration.
 type RuntimeConfig struct {
-	Name       string         `mapstructure:"name" validate:"omitempty,oneof=podman apple"`
-	Privileged bool           `mapstructure:"privileged"`
-	Flags      map[string]any `mapstructure:"flags"`
+	Name  string         `mapstructure:"name" validate:"omitempty,oneof=podman apple"`
+	Flags map[string]any `mapstructure:"flags"`
 }
 
 // Validate checks the configuration for errors using struct tags.
@@ -191,7 +190,6 @@ func (l *Loader) setDefaults() {
 	l.v.SetDefault("agents.gemini.env", map[string]string{})
 	l.v.SetDefault("agents.codex.env", map[string]string{})
 	l.v.SetDefault("runtime.name", "podman")
-	l.v.SetDefault("runtime.privileged", false)
 	l.v.SetDefault("runtime.flags", map[string]any{})
 }
 
