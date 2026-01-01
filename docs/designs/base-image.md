@@ -55,7 +55,10 @@ Headjack images use OCI labels to declare how they should be run. These labels a
 | Label | Purpose | Default (if absent) |
 |-------|---------|---------------------|
 | `io.headjack.init` | Command to run as PID 1 | `sleep infinity` |
-| `io.headjack.podman.flags` | Space-separated `key=value` pairs for Podman flags | (none) |
+| `io.headjack.podman.flags` | Space-separated `key=value` pairs for Podman runtime | (none) |
+| `io.headjack.apple.flags` | Space-separated `key=value` pairs for Apple Containerization | (none) |
+
+Images can specify both `podman.flags` and `apple.flags` to support both runtimes. Each runtime only reads its own label.
 
 ### Label Usage by Variant
 
@@ -70,14 +73,14 @@ Headjack images use OCI labels to declare how they should be run. These labels a
 1. When creating a container, Headjack fetches image metadata from the registry
 2. It extracts the `io.headjack.*` labels
 3. The `init` value becomes the container's main process (keeping it alive)
-4. The `podman.flags` value is parsed and merged with config flags (see below)
-5. The merged flags are passed to `podman run`
+4. The runtime-specific flags label (`podman.flags` or `apple.flags`) is parsed and merged with config flags (see below)
+5. The merged flags are passed to the container runtime
 
-This allows images with systemd to be configured automatically with the correct Podman flags, while the base image uses a simple `sleep infinity` to keep the container running.
+This allows images with systemd to be configured automatically with the correct flags, while the base image uses a simple `sleep infinity` to keep the container running.
 
 ### Flag Format
 
-The `io.headjack.podman.flags` label uses a simple `key=value` format:
+Both `podman.flags` and `apple.flags` labels use a simple `key=value` format:
 
 | Label Value | Resulting Flag |
 |-------------|----------------|

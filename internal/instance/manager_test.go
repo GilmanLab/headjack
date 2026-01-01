@@ -1315,6 +1315,51 @@ func TestGetImageRuntimeConfig(t *testing.T) {
 		assert.Nil(t, cfg.Flags, "podman flags should be ignored for apple runtime")
 	})
 
+	t.Run("extracts apple flags when using apple runtime", func(t *testing.T) {
+		reg := &registrymocks.ClientMock{
+			GetMetadataFunc: func(ctx context.Context, ref string) (*registry.ImageMetadata, error) {
+				return &registry.ImageMetadata{
+					Labels: map[string]string{
+						"io.headjack.init":        "/lib/systemd/systemd",
+						"io.headjack.apple.flags": "network=bridge memory=2g",
+					},
+				}, nil
+			},
+		}
+
+		mgr := NewManager(nil, nil, nil, nil, reg, ManagerConfig{
+			RuntimeType: RuntimeApple,
+		})
+
+		cfg := mgr.getImageRuntimeConfig(ctx, "myimage:systemd")
+
+		assert.Equal(t, "/lib/systemd/systemd", cfg.Init)
+		assert.Equal(t, "bridge", cfg.Flags["network"])
+		assert.Equal(t, "2g", cfg.Flags["memory"])
+	})
+
+	t.Run("ignores apple flags when using podman runtime", func(t *testing.T) {
+		reg := &registrymocks.ClientMock{
+			GetMetadataFunc: func(ctx context.Context, ref string) (*registry.ImageMetadata, error) {
+				return &registry.ImageMetadata{
+					Labels: map[string]string{
+						"io.headjack.init":        "/lib/systemd/systemd",
+						"io.headjack.apple.flags": "network=bridge memory=2g",
+					},
+				}, nil
+			},
+		}
+
+		mgr := NewManager(nil, nil, nil, nil, reg, ManagerConfig{
+			RuntimeType: RuntimePodman,
+		})
+
+		cfg := mgr.getImageRuntimeConfig(ctx, "myimage:systemd")
+
+		assert.Equal(t, "/lib/systemd/systemd", cfg.Init)
+		assert.Nil(t, cfg.Flags, "apple flags should be ignored for podman runtime")
+	})
+
 	t.Run("returns empty config when labels are nil", func(t *testing.T) {
 		reg := &registrymocks.ClientMock{
 			GetMetadataFunc: func(ctx context.Context, ref string) (*registry.ImageMetadata, error) {

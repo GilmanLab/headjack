@@ -125,11 +125,14 @@ type imageRuntimeConfig struct {
 const (
 	labelInit        = "io.headjack.init"
 	labelPodmanFlags = "io.headjack.podman.flags"
+	labelAppleFlags  = "io.headjack.apple.flags"
 )
 
 // getImageRuntimeConfig fetches image metadata and extracts runtime configuration from labels.
 // Returns default values if the registry client is nil or metadata cannot be fetched.
-// Podman-specific flags (io.headjack.podman.flags) are only extracted when using the Podman runtime.
+// Runtime-specific flags are extracted based on the configured runtime type:
+// - Podman: io.headjack.podman.flags
+// - Apple: io.headjack.apple.flags
 func (m *Manager) getImageRuntimeConfig(ctx context.Context, image string) imageRuntimeConfig {
 	cfg := imageRuntimeConfig{
 		Init: "", // Empty means runtime will use default "sleep infinity"
@@ -151,12 +154,20 @@ func (m *Manager) getImageRuntimeConfig(ctx context.Context, image string) image
 		if v, ok := metadata.Labels[labelInit]; ok {
 			cfg.Init = v
 		}
-		// Only extract Podman-specific flags when using Podman runtime
-		if m.runtimeType == RuntimePodman {
-			if v, ok := metadata.Labels[labelPodmanFlags]; ok {
+		// Extract runtime-specific flags based on runtime type
+		var flagsLabel string
+		switch m.runtimeType {
+		case RuntimePodman:
+			flagsLabel = labelPodmanFlags
+		case RuntimeApple:
+			flagsLabel = labelAppleFlags
+		}
+		if flagsLabel != "" {
+			if v, ok := metadata.Labels[flagsLabel]; ok {
 				parsedFlags, parseErr := flags.FromLabel(v)
 				if parseErr != nil {
-					fmt.Fprintf(os.Stderr, "warning: failed to parse podman flags from image %s: %v\n", image, parseErr)
+					fmt.Fprintf(os.Stderr, "warning: failed to parse %s flags from image %s: %v\n",
+						m.runtimeType, image, parseErr)
 				} else {
 					cfg.Flags = parsedFlags
 				}
