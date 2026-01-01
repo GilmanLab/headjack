@@ -15,13 +15,20 @@ import (
 	"github.com/jmgilman/headjack/internal/exec"
 )
 
+// AppleConfig holds Apple Containerization-specific runtime configuration.
+type AppleConfig struct {
+	Privileged bool     // Run containers in privileged mode
+	Flags      []string // Custom flags passed to container run
+}
+
 type appleRuntime struct {
-	exec exec.Executor
+	exec   exec.Executor
+	config AppleConfig
 }
 
 // NewAppleRuntime creates a Runtime using Apple Containerization CLI.
-func NewAppleRuntime(e exec.Executor) Runtime {
-	return &appleRuntime{exec: e}
+func NewAppleRuntime(e exec.Executor, cfg AppleConfig) Runtime {
+	return &appleRuntime{exec: e, config: cfg}
 }
 
 // containerError formats an error from the container CLI, including stderr if available.
@@ -37,6 +44,13 @@ func containerError(operation string, result *exec.Result, err error) error {
 
 func (r *appleRuntime) Run(ctx context.Context, cfg *RunConfig) (*Container, error) {
 	args := []string{"run", "--detach", "--name", cfg.Name}
+
+	if r.config.Privileged {
+		args = append(args, "--privileged")
+	}
+
+	// Add custom flags from config
+	args = append(args, r.config.Flags...)
 
 	for _, m := range cfg.Mounts {
 		mountSpec := fmt.Sprintf("%s:%s", m.Source, m.Target)

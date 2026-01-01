@@ -14,7 +14,7 @@ import (
 
 func TestNewAppleRuntime(t *testing.T) {
 	mockExec := &mocks.ExecutorMock{}
-	runtime := NewAppleRuntime(mockExec)
+	runtime := NewAppleRuntime(mockExec, AppleConfig{})
 
 	require.NotNil(t, runtime)
 }
@@ -39,7 +39,7 @@ func TestAppleRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		container, err := runtime.Run(ctx, &RunConfig{
 			Name:  "test-container",
 			Image: "ubuntu:24.04",
@@ -50,6 +50,51 @@ func TestAppleRuntime_Run(t *testing.T) {
 		assert.Equal(t, "test-container", container.Name)
 		assert.Equal(t, "ubuntu:24.04", container.Image)
 		assert.Equal(t, StatusRunning, container.Status)
+	})
+
+	t.Run("includes privileged flag when configured", func(t *testing.T) {
+		mockExec := &mocks.ExecutorMock{
+			RunFunc: func(_ context.Context, opts *exec.RunOptions) (*exec.Result, error) {
+				assert.Contains(t, opts.Args, "--privileged")
+
+				return &exec.Result{
+					Stdout:   []byte("abc123\n"),
+					ExitCode: 0,
+				}, nil
+			},
+		}
+
+		runtime := NewAppleRuntime(mockExec, AppleConfig{Privileged: true})
+		_, err := runtime.Run(ctx, &RunConfig{
+			Name:  "test",
+			Image: "ubuntu",
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("includes custom flags from config", func(t *testing.T) {
+		mockExec := &mocks.ExecutorMock{
+			RunFunc: func(_ context.Context, opts *exec.RunOptions) (*exec.Result, error) {
+				assert.Contains(t, opts.Args, "--memory=2g")
+				assert.Contains(t, opts.Args, "--cpus=2")
+
+				return &exec.Result{
+					Stdout:   []byte("abc123\n"),
+					ExitCode: 0,
+				}, nil
+			},
+		}
+
+		runtime := NewAppleRuntime(mockExec, AppleConfig{
+			Flags: []string{"--memory=2g", "--cpus=2"},
+		})
+		_, err := runtime.Run(ctx, &RunConfig{
+			Name:  "test",
+			Image: "ubuntu",
+		})
+
+		require.NoError(t, err)
 	})
 
 	t.Run("includes volume mounts", func(t *testing.T) {
@@ -65,7 +110,7 @@ func TestAppleRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.Run(ctx, &RunConfig{
 			Name:  "test",
 			Image: "ubuntu",
@@ -89,7 +134,7 @@ func TestAppleRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.Run(ctx, &RunConfig{
 			Name:  "test",
 			Image: "ubuntu",
@@ -114,7 +159,7 @@ func TestAppleRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.Run(ctx, &RunConfig{
 			Name:  "test",
 			Image: "ubuntu",
@@ -134,7 +179,7 @@ func TestAppleRuntime_Run(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.Run(ctx, &RunConfig{
 			Name:  "existing",
 			Image: "ubuntu",
@@ -168,7 +213,7 @@ func TestAppleRuntime_Exec(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Exec(ctx, "abc123", ExecConfig{
 			Command: []string{"bash"},
 		})
@@ -194,7 +239,7 @@ func TestAppleRuntime_Exec(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Exec(ctx, "abc123", ExecConfig{
 			Command: []string{"ls"},
 			Workdir: "/app",
@@ -213,7 +258,7 @@ func TestAppleRuntime_Exec(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Exec(ctx, "missing", ExecConfig{
 			Command: []string{"bash"},
 		})
@@ -231,7 +276,7 @@ func TestAppleRuntime_Exec(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Exec(ctx, "abc123", ExecConfig{
 			Command: []string{"bash"},
 		})
@@ -262,7 +307,7 @@ func TestAppleRuntime_Stop(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Stop(ctx, "abc123")
 
 		require.NoError(t, err)
@@ -281,7 +326,7 @@ func TestAppleRuntime_Stop(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Stop(ctx, "abc123")
 
 		require.NoError(t, err)
@@ -298,7 +343,7 @@ func TestAppleRuntime_Stop(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Stop(ctx, "missing")
 
 		assert.ErrorIs(t, err, ErrNotFound)
@@ -318,7 +363,7 @@ func TestAppleRuntime_Remove(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Remove(ctx, "abc123")
 
 		require.NoError(t, err)
@@ -334,7 +379,7 @@ func TestAppleRuntime_Remove(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Remove(ctx, "missing")
 
 		assert.ErrorIs(t, err, ErrNotFound)
@@ -358,7 +403,7 @@ func TestAppleRuntime_Get(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		container, err := runtime.Get(ctx, "abc123")
 
 		require.NoError(t, err)
@@ -378,7 +423,7 @@ func TestAppleRuntime_Get(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		container, err := runtime.Get(ctx, "abc123")
 
 		require.NoError(t, err)
@@ -395,7 +440,7 @@ func TestAppleRuntime_Get(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.Get(ctx, "missing")
 
 		assert.ErrorIs(t, err, ErrNotFound)
@@ -414,7 +459,7 @@ func TestAppleRuntime_List(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		containers, err := runtime.List(ctx, ListFilter{})
 
 		require.NoError(t, err)
@@ -431,7 +476,7 @@ func TestAppleRuntime_List(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		containers, err := runtime.List(ctx, ListFilter{})
 
 		require.NoError(t, err)
@@ -453,7 +498,7 @@ func TestAppleRuntime_List(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		_, err := runtime.List(ctx, ListFilter{Name: "my-prefix"})
 
 		require.NoError(t, err)
@@ -476,7 +521,7 @@ func TestAppleRuntime_Build(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Build(ctx, &BuildConfig{
 			Context: "/build/context",
 			Tag:     "myimage:latest",
@@ -495,7 +540,7 @@ func TestAppleRuntime_Build(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Build(ctx, &BuildConfig{
 			Context:    "/build/context",
 			Dockerfile: "custom.Dockerfile",
@@ -515,7 +560,7 @@ func TestAppleRuntime_Build(t *testing.T) {
 			},
 		}
 
-		runtime := NewAppleRuntime(mockExec)
+		runtime := NewAppleRuntime(mockExec, AppleConfig{})
 		err := runtime.Build(ctx, &BuildConfig{
 			Context: "/build/context",
 			Tag:     "myimage:latest",

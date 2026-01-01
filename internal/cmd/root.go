@@ -165,7 +165,12 @@ func initManager(muxOverride string) error {
 	}
 	switch runtimeName {
 	case "apple":
-		runtime = container.NewAppleRuntime(executor)
+		appleCfg := container.AppleConfig{}
+		if appConfig != nil {
+			appleCfg.Privileged = appConfig.Runtime.Privileged
+			appleCfg.Flags = appConfig.Runtime.Flags
+		}
+		runtime = container.NewAppleRuntime(executor, appleCfg)
 	default:
 		podmanCfg := container.PodmanConfig{}
 		if appConfig != nil {
