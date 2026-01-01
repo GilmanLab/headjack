@@ -6,6 +6,7 @@
 # See docs/designs/base-image.md for full specification.
 
 ARG BASE_IMAGE=ghcr.io/jmgilman/headjack:base
+# hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
