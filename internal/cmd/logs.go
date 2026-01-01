@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -74,8 +75,11 @@ func runLogsCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create log reader
-	cfg := ConfigFromContext(cmd.Context())
-	pathMgr := logging.NewPathManager(cfg.Storage.Logs)
+	logsDir, err := getLogsDir(cmd.Context())
+	if err != nil {
+		return fmt.Errorf("get logs directory: %w", err)
+	}
+	pathMgr := logging.NewPathManager(logsDir)
 	reader := logging.NewReader(pathMgr)
 
 	// Check if log file exists
@@ -119,4 +123,19 @@ func init() {
 	logsCmd.Flags().BoolP("follow", "f", false, "follow log output in real-time")
 	logsCmd.Flags().IntP("lines", "n", logging.DefaultTailLines, "number of lines to show")
 	logsCmd.Flags().Bool("full", false, "show entire log from session start")
+}
+
+// getLogsDir returns the logs directory from config, or the default if config is nil.
+func getLogsDir(ctx context.Context) (string, error) {
+	cfg := ConfigFromContext(ctx)
+	if cfg != nil {
+		return cfg.Storage.Logs, nil
+	}
+
+	// Fallback to default
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home directory: %w", err)
+	}
+	return filepath.Join(home, ".local", "share", "headjack", "logs"), nil
 }
