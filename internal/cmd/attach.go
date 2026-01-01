@@ -56,7 +56,7 @@ func attachGlobalMRU(cmd *cobra.Command, mgr *instance.Manager) error {
 	globalMRU, err := mgr.GetGlobalMRUSession(cmd.Context())
 	if err != nil {
 		if errors.Is(err, instance.ErrNoSessionsAvailable) {
-			return errors.New("no sessions exist (use 'run' to create one)")
+			return errors.New("no sessions exist (use 'hjk run' to create one)")
 		}
 		return fmt.Errorf("get global MRU session: %w", err)
 	}
@@ -74,7 +74,7 @@ func attachInstanceMRU(cmd *cobra.Command, mgr *instance.Manager, branch string)
 	inst, err := mgr.GetByBranch(cmd.Context(), repoPath, branch)
 	if err != nil {
 		if errors.Is(err, instance.ErrNotFound) {
-			return fmt.Errorf("no instance found for branch %q (use 'run' to create one)", branch)
+			return fmt.Errorf("no instance found for branch %q (use 'hjk run' to create one)", branch)
 		}
 		return fmt.Errorf("get instance: %w", err)
 	}
@@ -82,7 +82,7 @@ func attachInstanceMRU(cmd *cobra.Command, mgr *instance.Manager, branch string)
 	session, err := mgr.GetMRUSession(cmd.Context(), inst.ID)
 	if err != nil {
 		if errors.Is(err, instance.ErrNoSessionsAvailable) {
-			return fmt.Errorf("no sessions exist for branch %q (use 'run' to create one)", branch)
+			return fmt.Errorf("no sessions exist for branch %q (use 'hjk run' to create one)", branch)
 		}
 		return fmt.Errorf("get MRU session: %w", err)
 	}
@@ -100,7 +100,7 @@ func attachExplicitSession(cmd *cobra.Command, mgr *instance.Manager, branch, se
 	inst, err := mgr.GetByBranch(cmd.Context(), repoPath, branch)
 	if err != nil {
 		if errors.Is(err, instance.ErrNotFound) {
-			return fmt.Errorf("no instance found for branch %q (use 'run' to create one)", branch)
+			return fmt.Errorf("no instance found for branch %q (use 'hjk run' to create one)", branch)
 		}
 		return fmt.Errorf("get instance: %w", err)
 	}
