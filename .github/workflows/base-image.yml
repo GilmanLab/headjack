@@ -121,6 +121,8 @@ jobs:
         run: cosign attest --predicate sbom-base.spdx.json --type spdxjson ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
 
   build-systemd:
+    # Only build on push/release - PRs can't pull the base image from registry
+    if: github.event_name != 'pull_request'
     needs: build-base
     runs-on: warp-ubuntu-latest-x64-4x
     permissions:
@@ -172,9 +174,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # For PRs, use the published :base tag; for pushes, use the exact digest from build-base
           build-args: |
-            BASE_IMAGE=${{ github.event_name == 'pull_request' && format('{0}/{1}:base', env.REGISTRY, steps.image.outputs.name) || format('{0}/{1}@{2}', env.REGISTRY, steps.image.outputs.name, needs.build-base.outputs.digest) }}
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}@${{ needs.build-base.outputs.digest }}
 
       - name: Generate SBOM with Syft
         if: github.event_name != 'pull_request'
@@ -205,6 +206,8 @@ jobs:
         run: cosign attest --predicate sbom-systemd.spdx.json --type spdxjson ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
 
   build-dind:
+    # Only build on push/release - PRs can't pull the systemd image from registry
+    if: github.event_name != 'pull_request'
     needs: build-systemd
     runs-on: warp-ubuntu-latest-x64-4x
     permissions:
@@ -254,9 +257,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # For PRs, use the published :systemd tag; for pushes, use the exact digest from build-systemd
           build-args: |
-            BASE_IMAGE=${{ github.event_name == 'pull_request' && format('{0}/{1}:systemd', env.REGISTRY, steps.image.outputs.name) || format('{0}/{1}@{2}', env.REGISTRY, steps.image.outputs.name, needs.build-systemd.outputs.digest) }}
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}@${{ needs.build-systemd.outputs.digest }}
 
       - name: Generate SBOM with Syft
         if: github.event_name != 'pull_request'
