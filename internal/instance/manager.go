@@ -148,7 +148,10 @@ func (m *Manager) Create(ctx context.Context, repoPath string, cfg CreateConfig)
 	})
 	if err != nil {
 		// Cleanup worktree on container failure
-		_ = repo.RemoveWorktree(ctx, worktreePath) //nolint:errcheck // best-effort cleanup
+		if wtErr := repo.RemoveWorktree(ctx, worktreePath); wtErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("create container: %w (additionally, failed to remove worktree: %v)", err, wtErr)
+		}
 		cleanup()
 		return nil, fmt.Errorf("create container: %w", err)
 	}
@@ -157,10 +160,21 @@ func (m *Manager) Create(ctx context.Context, repoPath string, cfg CreateConfig)
 	entry.ContainerID = c.ID
 	entry.Status = catalog.StatusRunning
 	if updateErr := m.catalog.Update(ctx, &entry); updateErr != nil {
-		// Best-effort cleanup
-		_ = m.runtime.Stop(ctx, c.ID)              //nolint:errcheck // best-effort cleanup
-		_ = m.runtime.Remove(ctx, c.ID)            //nolint:errcheck // best-effort cleanup
-		_ = repo.RemoveWorktree(ctx, worktreePath) //nolint:errcheck // best-effort cleanup
+		// Cleanup container - use retry logic in case of transient issues
+		if stopErr := m.stopContainerWithRetry(ctx, c.ID); stopErr != nil && stopErr != container.ErrNotFound {
+			// Container stop failed - return combined error so user knows cleanup failed
+			cleanup()
+			return nil, fmt.Errorf("update catalog entry: %w (additionally, failed to stop container: %v)", updateErr, stopErr)
+		}
+		if removeErr := m.runtime.Remove(ctx, c.ID); removeErr != nil && removeErr != container.ErrNotFound {
+			cleanup()
+			return nil, fmt.Errorf("update catalog entry: %w (additionally, failed to remove container: %v)", updateErr, removeErr)
+		}
+		// Cleanup worktree
+		if wtErr := repo.RemoveWorktree(ctx, worktreePath); wtErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("update catalog entry: %w (additionally, failed to remove worktree: %v)", updateErr, wtErr)
+		}
 		cleanup()
 		return nil, fmt.Errorf("update catalog entry: %w", updateErr)
 	}
@@ -242,30 +256,8 @@ func (m *Manager) Stop(ctx context.Context, id string) error {
 		return fmt.Errorf("get catalog entry: %w", err)
 	}
 
-	// Kill all sessions before stopping the container.
-	// The container stop will fail with "Resource busy" if there are active
-	// multiplexer sessions connected to processes inside the container.
-	if m.mux != nil && len(entry.Sessions) > 0 {
-		for _, sess := range entry.Sessions {
-			// Best-effort kill - session may already be dead
-			_ = m.mux.KillSession(ctx, sess.MuxSessionID) //nolint:errcheck
-		}
-
-		// Wait for sessions to fully terminate. The kill is async and processes
-		// inside the container may still be running briefly after the kill returns.
-		// Best-effort wait - we'll try to stop the container anyway
-		_ = m.waitForSessionsTerminated(ctx, entry.Sessions) //nolint:errcheck
-	}
-
-	// Clear sessions from catalog
-	entry.Sessions = nil
-
-	if entry.ContainerID != "" {
-		if err := m.stopContainerWithRetry(ctx, entry.ContainerID); err != nil {
-			if err != container.ErrNotFound {
-				return fmt.Errorf("stop container: %w", err)
-			}
-		}
+	if err := m.shutdownContainer(ctx, entry, shutdownContainerOpts{RemoveContainer: false}); err != nil {
+		return err
 	}
 
 	entry.Status = catalog.StatusStopped
@@ -344,6 +336,59 @@ func (m *Manager) waitForSessionsTerminated(ctx context.Context, sessions []cata
 	}
 }
 
+// shutdownContainerOpts configures the shutdownContainer helper.
+type shutdownContainerOpts struct {
+	// RemoveContainer specifies whether to remove the container after stopping.
+	RemoveContainer bool
+}
+
+// shutdownContainer kills all sessions and stops (and optionally removes) the container.
+// This is the common shutdown sequence used by Stop, Remove, and Recreate.
+// It modifies entry.Sessions to nil after killing sessions.
+// The entry is NOT persisted to the catalog; the caller is responsible for that.
+func (m *Manager) shutdownContainer(ctx context.Context, entry *catalog.Entry, opts shutdownContainerOpts) error {
+	// Kill all sessions before stopping the container.
+	// The container stop will fail with "Resource busy" if there are active
+	// multiplexer sessions connected to processes inside the container.
+	if m.mux != nil && len(entry.Sessions) > 0 {
+		for _, sess := range entry.Sessions {
+			// Best-effort kill - session may already be dead
+			_ = m.mux.KillSession(ctx, sess.MuxSessionID) //nolint:errcheck
+
+			// Remove session log (best-effort)
+			_ = m.logPaths.RemoveSessionLog(entry.ID, sess.ID) //nolint:errcheck
+		}
+
+		// Wait for sessions to fully terminate. The kill is async and processes
+		// inside the container may still be running briefly after the kill returns.
+		// Best-effort wait - we'll try to stop the container anyway
+		_ = m.waitForSessionsTerminated(ctx, entry.Sessions) //nolint:errcheck
+	}
+
+	// Clear sessions from entry (caller must persist this change)
+	entry.Sessions = nil
+
+	// Stop container
+	if entry.ContainerID != "" {
+		if err := m.stopContainerWithRetry(ctx, entry.ContainerID); err != nil {
+			if err != container.ErrNotFound {
+				return fmt.Errorf("stop container: %w", err)
+			}
+		}
+
+		// Remove container if requested
+		if opts.RemoveContainer {
+			if err := m.runtime.Remove(ctx, entry.ContainerID); err != nil {
+				if err != container.ErrNotFound {
+					return fmt.Errorf("remove container: %w", err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // stopContainerWithRetry attempts to stop a container, retrying on "Resource busy" errors.
 // This handles the case where container processes spawned by killed sessions are still
 // cleaning up when we first try to stop.
@@ -392,19 +437,30 @@ func (m *Manager) Remove(ctx context.Context, id string) error {
 		return fmt.Errorf("get catalog entry: %w", err)
 	}
 
-	// Stop and remove container (best-effort)
-	if entry.ContainerID != "" {
-		_ = m.runtime.Stop(ctx, entry.ContainerID)   //nolint:errcheck // best-effort cleanup
-		_ = m.runtime.Remove(ctx, entry.ContainerID) //nolint:errcheck // best-effort cleanup
+	if err := m.shutdownContainer(ctx, entry, shutdownContainerOpts{RemoveContainer: true}); err != nil {
+		return err
 	}
 
-	// Remove worktree (best-effort)
+	// Remove worktree
 	if entry.Worktree != "" {
 		repo, repoErr := m.git.Open(ctx, entry.Repo)
-		if repoErr == nil {
-			_ = repo.RemoveWorktree(ctx, entry.Worktree) //nolint:errcheck // best-effort cleanup
+		if repoErr != nil {
+			// Repository might have been deleted - that's ok, can't remove worktree anyway
+			if repoErr != git.ErrNotRepository {
+				return fmt.Errorf("open repository for worktree removal: %w", repoErr)
+			}
+		} else {
+			if wtErr := repo.RemoveWorktree(ctx, entry.Worktree); wtErr != nil {
+				// Worktree might already be gone - that's ok
+				if wtErr != git.ErrWorktreeNotFound {
+					return fmt.Errorf("remove worktree: %w", wtErr)
+				}
+			}
 		}
 	}
+
+	// Remove instance logs directory (best-effort)
+	_ = m.logPaths.RemoveInstanceLogs(id) //nolint:errcheck // best-effort cleanup
 
 	// Remove catalog entry
 	if err := m.catalog.Remove(ctx, id); err != nil {
@@ -424,29 +480,8 @@ func (m *Manager) Recreate(ctx context.Context, id, image string) (*Instance, er
 		return nil, fmt.Errorf("get catalog entry: %w", err)
 	}
 
-	// Kill all sessions before stopping the container.
-	// The container stop/remove will fail with "Resource busy" if there are active
-	// multiplexer sessions connected to processes inside the container.
-	if m.mux != nil && len(entry.Sessions) > 0 {
-		for _, sess := range entry.Sessions {
-			_ = m.mux.KillSession(ctx, sess.MuxSessionID) //nolint:errcheck
-		}
-		_ = m.waitForSessionsTerminated(ctx, entry.Sessions) //nolint:errcheck
-	}
-	entry.Sessions = nil
-
-	// Stop and remove old container
-	if entry.ContainerID != "" {
-		if stopErr := m.stopContainerWithRetry(ctx, entry.ContainerID); stopErr != nil {
-			if stopErr != container.ErrNotFound {
-				return nil, fmt.Errorf("stop old container: %w", stopErr)
-			}
-		}
-		if removeErr := m.runtime.Remove(ctx, entry.ContainerID); removeErr != nil {
-			if removeErr != container.ErrNotFound {
-				return nil, fmt.Errorf("remove old container: %w", removeErr)
-			}
-		}
+	if shutdownErr := m.shutdownContainer(ctx, entry, shutdownContainerOpts{RemoveContainer: true}); shutdownErr != nil {
+		return nil, shutdownErr
 	}
 
 	// Create new container
@@ -686,7 +721,13 @@ func (m *Manager) CreateSession(ctx context.Context, instanceID string, cfg *Cre
 
 	entry.Sessions = append(entry.Sessions, catSession)
 	if updateErr := m.catalog.Update(ctx, entry); updateErr != nil {
-		_ = m.mux.KillSession(ctx, muxSessionName) //nolint:errcheck // best-effort cleanup
+		// Cleanup the multiplexer session we just created
+		if killErr := m.mux.KillSession(ctx, muxSessionName); killErr != nil {
+			// Session kill failed - return combined error so user knows cleanup failed
+			return nil, fmt.Errorf("update catalog entry: %w (additionally, failed to kill session %q: %v)", updateErr, muxSessionName, killErr)
+		}
+		// Cleanup the session log file
+		_ = m.logPaths.RemoveSessionLog(instanceID, sessionID) //nolint:errcheck // log cleanup is truly best-effort
 		return nil, fmt.Errorf("update catalog entry: %w", updateErr)
 	}
 
