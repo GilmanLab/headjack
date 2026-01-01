@@ -38,7 +38,7 @@ shell sessions or agents to run concurrently within a single instance.`,
 		inst, err := mgr.GetByBranch(cmd.Context(), repoPath, branch)
 		if err != nil {
 			if errors.Is(err, instance.ErrNotFound) {
-				return fmt.Errorf("no instance found for branch %q (use 'new' to create one)", branch)
+				return fmt.Errorf("no instance found for branch %q (use 'run' to create one)", branch)
 			}
 			return fmt.Errorf("get instance: %w", err)
 		}
