@@ -238,7 +238,7 @@ func (r *podmanRuntime) Remove(ctx context.Context, id string) error {
 func (r *podmanRuntime) Get(ctx context.Context, id string) (*Container, error) {
 	result, err := r.exec.Run(ctx, &exec.RunOptions{
 		Name: "podman",
-		Args: []string{"inspect", "--format", "json", id},
+		Args: []string{"inspect", id},
 	})
 	if err != nil {
 		stderr := string(result.Stderr)
@@ -346,9 +346,13 @@ func (p *podmanInspect) toContainer() *Container {
 		image = p.Config.Image
 	}
 
-	createdAt, err := time.Parse(time.RFC3339, p.Created)
+	// Podman uses RFC3339Nano format (with fractional seconds), fall back to RFC3339
+	createdAt, err := time.Parse(time.RFC3339Nano, p.Created)
 	if err != nil {
-		createdAt = time.Time{}
+		createdAt, err = time.Parse(time.RFC3339, p.Created)
+		if err != nil {
+			createdAt = time.Time{}
+		}
 	}
 
 	return &Container{

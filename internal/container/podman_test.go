@@ -443,14 +443,11 @@ func TestPodmanRuntime_Get(t *testing.T) {
 		mockExec := &mocks.ExecutorMock{
 			RunFunc: func(_ context.Context, opts *exec.RunOptions) (*exec.Result, error) {
 				assert.Equal(t, "podman", opts.Name)
-				assert.Contains(t, opts.Args, "inspect")
-				assert.Contains(t, opts.Args, "--format")
-				assert.Contains(t, opts.Args, "json")
-				assert.Contains(t, opts.Args, "abc123")
+				assert.Equal(t, []string{"inspect", "abc123"}, opts.Args)
 
-				// Podman format
+				// Podman format with RFC3339Nano timestamp
 				return &exec.Result{
-					Stdout: []byte(`[{"Id":"abc123def456","Name":"/test-container","State":{"Status":"running"},"Config":{"Image":"ubuntu:24.04"},"ImageName":"ubuntu:24.04","Created":"2024-01-15T10:30:00Z"}]`),
+					Stdout: []byte(`[{"Id":"abc123def456","Name":"/test-container","State":{"Status":"running"},"Config":{"Image":"ubuntu:24.04"},"ImageName":"ubuntu:24.04","Created":"2024-01-15T10:30:00.123456789Z"}]`),
 				}, nil
 			},
 		}
@@ -480,6 +477,23 @@ func TestPodmanRuntime_Get(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, StatusStopped, container.Status)
+	})
+
+	t.Run("parses RFC3339 timestamp fallback", func(t *testing.T) {
+		mockExec := &mocks.ExecutorMock{
+			RunFunc: func(_ context.Context, _ *exec.RunOptions) (*exec.Result, error) {
+				// Podman format with RFC3339 timestamp (no nanoseconds)
+				return &exec.Result{
+					Stdout: []byte(`[{"Id":"abc123","Name":"test","State":{"Status":"running"},"Config":{"Image":"ubuntu"},"Created":"2024-01-15T10:30:00Z"}]`),
+				}, nil
+			},
+		}
+
+		runtime := NewPodmanRuntime(mockExec, PodmanConfig{})
+		container, err := runtime.Get(ctx, "abc123")
+
+		require.NoError(t, err)
+		assert.False(t, container.CreatedAt.IsZero())
 	})
 
 	t.Run("returns ErrNotFound when container missing", func(t *testing.T) {
