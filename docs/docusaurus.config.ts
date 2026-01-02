@@ -55,6 +55,10 @@ const config: Config = {
     },
     navbar: {
       title: 'Headjack',
+      logo: {
+        alt: 'Headjack Logo',
+        src: 'img/logo.png',
+      },
       items: [
         {
           type: 'docSidebar',
