@@ -35,12 +35,6 @@ View and modify Headjack configuration:
 |------|------|---------|-------------|
 | `--edit` | bool | `false` | Open config file in `$EDITOR` |
 
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash
@@ -65,7 +59,6 @@ Common configuration keys:
 |-----|------|-------------|
 | `default.agent` | string | Default agent when `--agent` is used without a value |
 | `default.base_image` | string | Default container base image |
-| `default.multiplexer` | string | Default terminal multiplexer (`tmux`, `zellij`) |
 | `storage.worktrees` | string | Directory for git worktrees |
 | `storage.catalog` | string | Path to the instance catalog file |
 | `storage.logs` | string | Directory for session logs |

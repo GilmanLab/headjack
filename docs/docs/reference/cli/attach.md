@@ -24,7 +24,7 @@ Attaches to an existing session using a most-recently-used (MRU) strategy:
 
 If no sessions exist for the resolved scope, the command displays an error suggesting `hjk run` to create one.
 
-To detach from a session without terminating it, use the terminal multiplexer detach keybinding (for Zellij: `Ctrl+O, d`). This returns you to your host terminal while the session continues running.
+To detach from a session without terminating it, use the tmux detach keybinding (`Ctrl+B, d`). This returns you to your host terminal while the session continues running.
 
 ## Arguments
 
@@ -32,14 +32,6 @@ To detach from a session without terminating it, use the terminal multiplexer de
 |----------|-------------|
 | `branch` | Git branch name to filter by (optional) |
 | `session` | Session name within the instance (optional, requires branch) |
-
-## Flags
-
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
 
 ## Examples
 
