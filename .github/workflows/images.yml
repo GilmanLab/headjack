@@ -85,8 +85,9 @@ jobs:
         with:
           files: docker-bake.hcl
           push: ${{ github.event_name != 'pull_request' }}
+          # Multi-platform on push, single platform on PR (docker exporter doesn't support manifest lists)
           set: |
-            *.platform=linux/amd64,linux/arm64
+            *.platform=${{ github.event_name != 'pull_request' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
             base.tags=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:base
             base.tags=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:base-${{ steps.tag.outputs.tag }}
             systemd.tags=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:systemd
