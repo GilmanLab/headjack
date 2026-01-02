@@ -272,6 +272,4 @@ The environment variable + file-writing approach works reliably across the VM bo
 
 ## Related
 
-- [CLI Agents vs API](./cli-agents-vs-api) - Why CLI agents require this auth complexity
-- [Isolation Model](./isolation-model) - How the VM boundary affects credential access
 - [Session Lifecycle](./session-lifecycle) - When credentials are injected

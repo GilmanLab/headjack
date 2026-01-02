@@ -111,4 +111,3 @@ This architecture emerges from several design goals:
 
 - [Worktree Strategy](./worktree-strategy) - Why git worktrees instead of clones
 - [Session Lifecycle](./session-lifecycle) - How sessions persist and resume
-- [Isolation Model](./isolation-model) - VM-based container isolation

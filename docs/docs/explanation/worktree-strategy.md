@@ -216,4 +216,3 @@ Git worktrees enable Headjack's core value proposition: multiple agents working 
 
 - [Architecture Overview](./architecture) - How worktrees fit into instances
 - [Session Lifecycle](./session-lifecycle) - What happens inside the worktree's container
-- [Isolation Model](./isolation-model) - How containers isolate agent activity

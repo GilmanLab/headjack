@@ -243,13 +243,6 @@ The key insight is that agents work best with clear, specific instructions. Vagu
 
 Now that you can delegate individual tasks, explore these resources:
 
-**Tutorials**
-- [Running Parallel Agents](./parallel-agents) - Run multiple agents on different features simultaneously
-
 **How-To Guides**
 - [Manage Sessions](../how-to/manage-sessions) - Advanced session management techniques
 - [Stop and Clean Up Instances](../how-to/stop-cleanup) - Instance lifecycle management
-
-**Concepts**
-- [CLI Agents vs API](../explanation/cli-agents-vs-api) - How different agents approach problems
-- [Isolation Model](../explanation/isolation-model) - Understanding the security boundaries

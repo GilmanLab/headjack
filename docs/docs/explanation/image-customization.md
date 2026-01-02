@@ -256,4 +256,3 @@ For team use, pre-build and push images to a shared registry. Don't make each de
 
 - [ADR-006: OCI Images for Customization](../decisions/adr-006-oci-customization) - The formal decision record
 - [Version Managers](./version-managers) - Why pyenv/nodenv/goenv instead of system packages
-- [Isolation Model](./isolation-model) - How containers provide isolation

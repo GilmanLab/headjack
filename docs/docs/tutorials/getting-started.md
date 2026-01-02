@@ -243,7 +243,6 @@ Now that you understand the basics, explore these resources:
 
 **Tutorials**
 - [Your First Coding Task](./first-coding-task) - Walk through a complete development workflow with an agent
-- [Running Parallel Agents](./parallel-agents) - Run multiple agents simultaneously on different branches
 
 **How-To Guides**
 - [Manage Sessions](../how-to/manage-sessions) - Start agents, attach/detach, and monitor logs
