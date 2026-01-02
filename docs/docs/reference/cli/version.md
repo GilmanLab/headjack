@@ -1,16 +1,12 @@
 ---
 sidebar_position: 11
 title: hjk version
-description: Show version information
+description: Display version information
 ---
 
 # hjk version
 
-Display version, commit hash, and build date.
-
-:::info Coming Soon
-This reference is being written. Check back soon!
-:::
+Display version information for Headjack.
 
 ## Synopsis
 
@@ -18,6 +14,45 @@ This reference is being written. Check back soon!
 hjk version
 ```
 
+## Description
+
+Displays the version, commit hash, and build date of the Headjack installation.
+
+## Arguments
+
+This command takes no arguments.
+
+## Flags
+
+### Inherited Flags
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
+
+## Examples
+
+```bash
+# Display version information
+hjk version
+```
+
 ## Output
 
-*Coming soon*
+The command outputs three lines:
+
+```
+headjack v1.2.3
+  commit: abc1234
+  built:  2024-01-15T10:30:00Z
+```
+
+| Field | Description |
+|-------|-------------|
+| version | Semantic version number |
+| commit | Git commit hash the binary was built from |
+| built | Build timestamp in ISO 8601 format |
+
+## See Also
+
+- [Headjack releases](https://github.com/GilmanLab/headjack/releases) - View available versions

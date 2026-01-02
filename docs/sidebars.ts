@@ -40,22 +40,10 @@ const sidebars: SidebarsConfig = {
           label: 'Installation & Setup',
           items: [
             'how-to/install',
-            'how-to/authenticate-claude',
-            'how-to/authenticate-gemini',
-            'how-to/authenticate-codex',
+            'how-to/authenticate',
           ],
         },
-        {
-          type: 'category',
-          label: 'Running Agents',
-          items: [
-            'how-to/spawn-agent',
-            'how-to/spawn-shell',
-            'how-to/run-parallel-agents',
-            'how-to/monitor-detached-session',
-            'how-to/attach-detach',
-          ],
-        },
+        'how-to/manage-sessions',
         {
           type: 'category',
           label: 'Instance Management',
@@ -68,9 +56,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Customization',
           items: [
-            'how-to/use-custom-image',
             'how-to/build-custom-image',
-            'how-to/configure-defaults',
           ],
         },
         {
@@ -132,9 +118,6 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'reference/images/overview',
-            'reference/images/base',
-            'reference/images/systemd',
-            'reference/images/dind',
             'reference/images/labels',
           ],
         },
