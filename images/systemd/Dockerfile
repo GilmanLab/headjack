@@ -10,6 +10,9 @@ FROM base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Switch to root for package installation (base image ends with USER developer)
+USER root
+
 # =============================================================================
 # Install systemd
 # =============================================================================
