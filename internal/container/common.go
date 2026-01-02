@@ -169,6 +169,10 @@ func (r *baseRuntime) Remove(ctx context.Context, id string) error {
 
 // Get retrieves container information by ID or name.
 func (r *baseRuntime) Get(ctx context.Context, id string) (*Container, error) {
+	if r.parser == nil {
+		return nil, ErrNoParser
+	}
+
 	result, err := r.exec.Run(ctx, &exec.RunOptions{
 		Name: r.binaryName,
 		Args: []string{"inspect", id},
@@ -186,6 +190,10 @@ func (r *baseRuntime) Get(ctx context.Context, id string) (*Container, error) {
 
 // List returns all containers matching the filter.
 func (r *baseRuntime) List(ctx context.Context, filter ListFilter) ([]Container, error) {
+	if r.parser == nil {
+		return nil, ErrNoParser
+	}
+
 	args := append([]string{}, r.listArgs...)
 	args = append(args, "--format", "json")
 
