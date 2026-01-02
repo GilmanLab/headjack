@@ -152,19 +152,19 @@ type agentAuthSpec struct {
 
 var agentAuthSpecs = map[string]agentAuthSpec{
 	"claude": {
-		provider:      auth.NewClaudeProvider,
+		provider:      func() auth.Provider { return auth.NewClaudeProvider() },
 		envVar:        "CLAUDE_CODE_OAUTH_TOKEN",
 		notConfigured: "claude auth not configured: run 'headjack auth claude' first",
 		errPrefix:     "get claude token",
 	},
 	"gemini": {
-		provider:      auth.NewGeminiProvider,
+		provider:      func() auth.Provider { return auth.NewGeminiProvider() },
 		envVar:        "GEMINI_OAUTH_CREDS",
 		notConfigured: "gemini auth not configured: run 'headjack auth gemini' first",
 		errPrefix:     "get gemini credentials",
 	},
 	"codex": {
-		provider:      auth.NewCodexProvider,
+		provider:      func() auth.Provider { return auth.NewCodexProvider() },
 		envVar:        "CODEX_AUTH_JSON",
 		notConfigured: "codex auth not configured: run 'headjack auth codex' first",
 		errPrefix:     "get codex credentials",
