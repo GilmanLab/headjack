@@ -35,6 +35,17 @@ These specifications exist because:
 
 A container image with Python 3.12 pre-installed doesn't help if your project requires 3.11. You'd need a custom image, defeating the convenience of a standard base.
 
+import ThemedImage from '@theme/ThemedImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+<ThemedImage
+  alt="Dependency Hell"
+  sources={{
+    light: useBaseUrl('/img/version-conflict.png'),
+    dark: useBaseUrl('/img/version-conflict-dark.png'),
+  }}
+/>
+
 ## The Version Manager Solution
 
 Version managers solve this by allowing multiple versions to coexist:
@@ -115,6 +126,14 @@ When you run `python`, the shell finds pyenv's shim first. The shim:
 1. Checks for `.python-version` in the current directory (or parents)
 2. Falls back to the global version
 3. Executes the appropriate Python binary
+
+<ThemedImage
+  alt="Shim Mechanic"
+  sources={{
+    light: useBaseUrl('/img/version-shim.png'),
+    dark: useBaseUrl('/img/version-shim-dark.png'),
+  }}
+/>
 
 ### Agent Workflow
 

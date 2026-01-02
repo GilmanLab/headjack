@@ -1,5 +1,5 @@
-import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
+import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
@@ -12,10 +12,10 @@ const config: Config = {
   },
 
   // Production URL - will be updated when Cloudflare Pages is configured
-  url: 'https://headjack.dev',
+  url: 'https://headjack.gilman.io',
   baseUrl: '/',
 
-  organizationName: 'jmgilman',
+  organizationName: 'gilmanlab',
   projectName: 'headjack',
 
   onBrokenLinks: 'throw',
@@ -38,7 +38,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           routeBasePath: '/', // Docs-only mode: serve docs at root
-          editUrl: 'https://github.com/jmgilman/headjack/tree/master/docs/',
+          editUrl: 'https://github.com/gilmanlab/headjack/tree/master/docs/',
         },
         blog: false, // Disable blog
         theme: {
@@ -63,7 +63,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          href: 'https://github.com/jmgilman/headjack',
+          href: 'https://github.com/gilmanlab/headjack',
           label: 'GitHub',
           position: 'right',
         },
@@ -90,7 +90,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/jmgilman/headjack',
+              href: 'https://github.com/gilmanlab/headjack',
             },
           ],
         },

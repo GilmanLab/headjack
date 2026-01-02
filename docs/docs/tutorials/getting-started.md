@@ -10,6 +10,17 @@ In this tutorial, we will install Headjack, configure authentication for Claude 
 
 This tutorial takes approximately 10-15 minutes to complete.
 
+import ThemedImage from '@theme/ThemedImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+<ThemedImage
+  alt="Getting Started Roadmap"
+  sources={{
+    light: useBaseUrl('/img/getting-started-flow.png'),
+    dark: useBaseUrl('/img/getting-started-flow-dark.png'),
+  }}
+/>
+
 ## What We Will Accomplish
 
 1. Install Headjack on your macOS system

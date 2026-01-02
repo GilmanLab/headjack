@@ -1,4 +1,4 @@
-import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
   docsSidebar: [
@@ -18,7 +18,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'tutorials/getting-started',
         'tutorials/first-coding-task',
-        'tutorials/parallel-agents',
+        // 'tutorials/parallel-agents',
         'tutorials/custom-image',
       ],
     },
@@ -137,8 +137,8 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'explanation/architecture',
-        'explanation/isolation-model',
-        'explanation/cli-agents-vs-api',
+        // 'explanation/isolation-model',
+        // 'explanation/cli-agents-vs-api',
         'explanation/worktree-strategy',
         'explanation/session-lifecycle',
         'explanation/authentication',

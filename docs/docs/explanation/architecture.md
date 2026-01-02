@@ -18,21 +18,16 @@ An **instance** is Headjack's central concept. It represents a complete, isolate
 
 When you run `hjk run feature-branch`, Headjack creates an instance by wiring these three components together. The instance remains linked to your repository and branch throughout its lifecycle.
 
-```
-+-----------------------------------------------------------+
-|                       Instance                            |
-|  +-------------------+  +------------------------------+  |
-|  |   Git Worktree    |  |          Container           |  |
-|  |                   |  |  +--------+  +------------+  |  |
-|  |  /workspace ------+--+->| Mount  |  |  Session   |  |  |
-|  |                   |  |  +--------+  |  (claude)  |  |  |
-|  |  feature-branch   |  |              +------------+  |  |
-|  |                   |  |              |  Session   |  |  |
-|  +-------------------+  |              |  (shell)   |  |  |
-|                         |              +------------+  |  |
-|                         +------------------------------+  |
-+-----------------------------------------------------------+
-```
+import ThemedImage from '@theme/ThemedImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+<ThemedImage
+  alt="Instance Architecture"
+  sources={{
+    light: useBaseUrl('/img/architecture-instance.png'),
+    dark: useBaseUrl('/img/architecture-instance-dark.png'),
+  }}
+/>
 
 The instance abstraction serves several purposes:
 
