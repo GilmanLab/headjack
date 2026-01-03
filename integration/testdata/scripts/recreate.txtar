@@ -1,0 +1,42 @@
+# Test hjk recreate command
+# This test requires a container runtime
+
+cleanup_containers
+
+# Create a test git repository
+exec git init testrepo
+cd testrepo
+exec git config user.email 'test@example.com'
+exec git config user.name 'Test User'
+exec git commit --allow-empty -m 'initial commit'
+exec git branch test/recreate-instance
+
+# Create an instance
+exec hjk run test/recreate-instance -d
+stdout 'Created'
+! stderr .
+
+sleep 2
+
+# Verify instance is running
+exec hjk ps
+stdout 'test/recreate-instance'
+stdout 'running'
+! stderr .
+
+# Recreate the instance
+exec hjk recreate test/recreate-instance
+stdout 'Recreated instance'
+stdout 'test/recreate-instance'
+! stderr .
+
+# Verify instance is still running after recreate
+exec hjk ps
+stdout 'test/recreate-instance'
+stdout 'running'
+! stderr .
+
+# Clean up
+exec hjk rm test/recreate-instance --force
+stdout 'Removed'
+! stderr .
