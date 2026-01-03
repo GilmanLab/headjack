@@ -4,7 +4,6 @@
 package mocks
 
 import (
-	"context"
 	"sync"
 
 	"github.com/jmgilman/headjack/internal/auth"
@@ -20,11 +19,23 @@ var _ auth.Provider = &ProviderMock{}
 //
 //		// make and configure a mocked auth.Provider
 //		mockedProvider := &ProviderMock{
-//			AuthenticateFunc: func(ctx context.Context, storage auth.Storage) error {
-//				panic("mock out the Authenticate method")
+//			CheckSubscriptionFunc: func() (string, error) {
+//				panic("mock out the CheckSubscription method")
 //			},
-//			GetFunc: func(storage auth.Storage) (string, error) {
-//				panic("mock out the Get method")
+//			InfoFunc: func() auth.ProviderInfo {
+//				panic("mock out the Info method")
+//			},
+//			LoadFunc: func(storage auth.Storage) (*auth.Credential, error) {
+//				panic("mock out the Load method")
+//			},
+//			StoreFunc: func(storage auth.Storage, cred auth.Credential) error {
+//				panic("mock out the Store method")
+//			},
+//			ValidateAPIKeyFunc: func(value string) error {
+//				panic("mock out the ValidateAPIKey method")
+//			},
+//			ValidateSubscriptionFunc: func(value string) error {
+//				panic("mock out the ValidateSubscription method")
 //			},
 //		}
 //
@@ -33,95 +44,245 @@ var _ auth.Provider = &ProviderMock{}
 //
 //	}
 type ProviderMock struct {
-	// AuthenticateFunc mocks the Authenticate method.
-	AuthenticateFunc func(ctx context.Context, storage auth.Storage) error
+	// CheckSubscriptionFunc mocks the CheckSubscription method.
+	CheckSubscriptionFunc func() (string, error)
 
-	// GetFunc mocks the Get method.
-	GetFunc func(storage auth.Storage) (string, error)
+	// InfoFunc mocks the Info method.
+	InfoFunc func() auth.ProviderInfo
+
+	// LoadFunc mocks the Load method.
+	LoadFunc func(storage auth.Storage) (*auth.Credential, error)
+
+	// StoreFunc mocks the Store method.
+	StoreFunc func(storage auth.Storage, cred auth.Credential) error
+
+	// ValidateAPIKeyFunc mocks the ValidateAPIKey method.
+	ValidateAPIKeyFunc func(value string) error
+
+	// ValidateSubscriptionFunc mocks the ValidateSubscription method.
+	ValidateSubscriptionFunc func(value string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// Authenticate holds details about calls to the Authenticate method.
-		Authenticate []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
+		// CheckSubscription holds details about calls to the CheckSubscription method.
+		CheckSubscription []struct {
+		}
+		// Info holds details about calls to the Info method.
+		Info []struct {
+		}
+		// Load holds details about calls to the Load method.
+		Load []struct {
 			// Storage is the storage argument value.
 			Storage auth.Storage
 		}
-		// Get holds details about calls to the Get method.
-		Get []struct {
+		// Store holds details about calls to the Store method.
+		Store []struct {
 			// Storage is the storage argument value.
 			Storage auth.Storage
+			// Cred is the cred argument value.
+			Cred auth.Credential
+		}
+		// ValidateAPIKey holds details about calls to the ValidateAPIKey method.
+		ValidateAPIKey []struct {
+			// Value is the value argument value.
+			Value string
+		}
+		// ValidateSubscription holds details about calls to the ValidateSubscription method.
+		ValidateSubscription []struct {
+			// Value is the value argument value.
+			Value string
 		}
 	}
-	lockAuthenticate sync.RWMutex
-	lockGet          sync.RWMutex
+	lockCheckSubscription    sync.RWMutex
+	lockInfo                 sync.RWMutex
+	lockLoad                 sync.RWMutex
+	lockStore                sync.RWMutex
+	lockValidateAPIKey       sync.RWMutex
+	lockValidateSubscription sync.RWMutex
 }
 
-// Authenticate calls AuthenticateFunc.
-func (mock *ProviderMock) Authenticate(ctx context.Context, storage auth.Storage) error {
-	if mock.AuthenticateFunc == nil {
-		panic("ProviderMock.AuthenticateFunc: method is nil but Provider.Authenticate was just called")
+// CheckSubscription calls CheckSubscriptionFunc.
+func (mock *ProviderMock) CheckSubscription() (string, error) {
+	if mock.CheckSubscriptionFunc == nil {
+		panic("ProviderMock.CheckSubscriptionFunc: method is nil but Provider.CheckSubscription was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		Storage auth.Storage
-	}{
-		Ctx:     ctx,
-		Storage: storage,
-	}
-	mock.lockAuthenticate.Lock()
-	mock.calls.Authenticate = append(mock.calls.Authenticate, callInfo)
-	mock.lockAuthenticate.Unlock()
-	return mock.AuthenticateFunc(ctx, storage)
+	}{}
+	mock.lockCheckSubscription.Lock()
+	mock.calls.CheckSubscription = append(mock.calls.CheckSubscription, callInfo)
+	mock.lockCheckSubscription.Unlock()
+	return mock.CheckSubscriptionFunc()
 }
 
-// AuthenticateCalls gets all the calls that were made to Authenticate.
+// CheckSubscriptionCalls gets all the calls that were made to CheckSubscription.
 // Check the length with:
 //
-//	len(mockedProvider.AuthenticateCalls())
-func (mock *ProviderMock) AuthenticateCalls() []struct {
-	Ctx     context.Context
-	Storage auth.Storage
+//	len(mockedProvider.CheckSubscriptionCalls())
+func (mock *ProviderMock) CheckSubscriptionCalls() []struct {
 } {
 	var calls []struct {
-		Ctx     context.Context
-		Storage auth.Storage
 	}
-	mock.lockAuthenticate.RLock()
-	calls = mock.calls.Authenticate
-	mock.lockAuthenticate.RUnlock()
+	mock.lockCheckSubscription.RLock()
+	calls = mock.calls.CheckSubscription
+	mock.lockCheckSubscription.RUnlock()
 	return calls
 }
 
-// Get calls GetFunc.
-func (mock *ProviderMock) Get(storage auth.Storage) (string, error) {
-	if mock.GetFunc == nil {
-		panic("ProviderMock.GetFunc: method is nil but Provider.Get was just called")
+// Info calls InfoFunc.
+func (mock *ProviderMock) Info() auth.ProviderInfo {
+	if mock.InfoFunc == nil {
+		panic("ProviderMock.InfoFunc: method is nil but Provider.Info was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockInfo.Lock()
+	mock.calls.Info = append(mock.calls.Info, callInfo)
+	mock.lockInfo.Unlock()
+	return mock.InfoFunc()
+}
+
+// InfoCalls gets all the calls that were made to Info.
+// Check the length with:
+//
+//	len(mockedProvider.InfoCalls())
+func (mock *ProviderMock) InfoCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockInfo.RLock()
+	calls = mock.calls.Info
+	mock.lockInfo.RUnlock()
+	return calls
+}
+
+// Load calls LoadFunc.
+func (mock *ProviderMock) Load(storage auth.Storage) (*auth.Credential, error) {
+	if mock.LoadFunc == nil {
+		panic("ProviderMock.LoadFunc: method is nil but Provider.Load was just called")
 	}
 	callInfo := struct {
 		Storage auth.Storage
 	}{
 		Storage: storage,
 	}
-	mock.lockGet.Lock()
-	mock.calls.Get = append(mock.calls.Get, callInfo)
-	mock.lockGet.Unlock()
-	return mock.GetFunc(storage)
+	mock.lockLoad.Lock()
+	mock.calls.Load = append(mock.calls.Load, callInfo)
+	mock.lockLoad.Unlock()
+	return mock.LoadFunc(storage)
 }
 
-// GetCalls gets all the calls that were made to Get.
+// LoadCalls gets all the calls that were made to Load.
 // Check the length with:
 //
-//	len(mockedProvider.GetCalls())
-func (mock *ProviderMock) GetCalls() []struct {
+//	len(mockedProvider.LoadCalls())
+func (mock *ProviderMock) LoadCalls() []struct {
 	Storage auth.Storage
 } {
 	var calls []struct {
 		Storage auth.Storage
 	}
-	mock.lockGet.RLock()
-	calls = mock.calls.Get
-	mock.lockGet.RUnlock()
+	mock.lockLoad.RLock()
+	calls = mock.calls.Load
+	mock.lockLoad.RUnlock()
+	return calls
+}
+
+// Store calls StoreFunc.
+func (mock *ProviderMock) Store(storage auth.Storage, cred auth.Credential) error {
+	if mock.StoreFunc == nil {
+		panic("ProviderMock.StoreFunc: method is nil but Provider.Store was just called")
+	}
+	callInfo := struct {
+		Storage auth.Storage
+		Cred    auth.Credential
+	}{
+		Storage: storage,
+		Cred:    cred,
+	}
+	mock.lockStore.Lock()
+	mock.calls.Store = append(mock.calls.Store, callInfo)
+	mock.lockStore.Unlock()
+	return mock.StoreFunc(storage, cred)
+}
+
+// StoreCalls gets all the calls that were made to Store.
+// Check the length with:
+//
+//	len(mockedProvider.StoreCalls())
+func (mock *ProviderMock) StoreCalls() []struct {
+	Storage auth.Storage
+	Cred    auth.Credential
+} {
+	var calls []struct {
+		Storage auth.Storage
+		Cred    auth.Credential
+	}
+	mock.lockStore.RLock()
+	calls = mock.calls.Store
+	mock.lockStore.RUnlock()
+	return calls
+}
+
+// ValidateAPIKey calls ValidateAPIKeyFunc.
+func (mock *ProviderMock) ValidateAPIKey(value string) error {
+	if mock.ValidateAPIKeyFunc == nil {
+		panic("ProviderMock.ValidateAPIKeyFunc: method is nil but Provider.ValidateAPIKey was just called")
+	}
+	callInfo := struct {
+		Value string
+	}{
+		Value: value,
+	}
+	mock.lockValidateAPIKey.Lock()
+	mock.calls.ValidateAPIKey = append(mock.calls.ValidateAPIKey, callInfo)
+	mock.lockValidateAPIKey.Unlock()
+	return mock.ValidateAPIKeyFunc(value)
+}
+
+// ValidateAPIKeyCalls gets all the calls that were made to ValidateAPIKey.
+// Check the length with:
+//
+//	len(mockedProvider.ValidateAPIKeyCalls())
+func (mock *ProviderMock) ValidateAPIKeyCalls() []struct {
+	Value string
+} {
+	var calls []struct {
+		Value string
+	}
+	mock.lockValidateAPIKey.RLock()
+	calls = mock.calls.ValidateAPIKey
+	mock.lockValidateAPIKey.RUnlock()
+	return calls
+}
+
+// ValidateSubscription calls ValidateSubscriptionFunc.
+func (mock *ProviderMock) ValidateSubscription(value string) error {
+	if mock.ValidateSubscriptionFunc == nil {
+		panic("ProviderMock.ValidateSubscriptionFunc: method is nil but Provider.ValidateSubscription was just called")
+	}
+	callInfo := struct {
+		Value string
+	}{
+		Value: value,
+	}
+	mock.lockValidateSubscription.Lock()
+	mock.calls.ValidateSubscription = append(mock.calls.ValidateSubscription, callInfo)
+	mock.lockValidateSubscription.Unlock()
+	return mock.ValidateSubscriptionFunc(value)
+}
+
+// ValidateSubscriptionCalls gets all the calls that were made to ValidateSubscription.
+// Check the length with:
+//
+//	len(mockedProvider.ValidateSubscriptionCalls())
+func (mock *ProviderMock) ValidateSubscriptionCalls() []struct {
+	Value string
+} {
+	var calls []struct {
+		Value string
+	}
+	mock.lockValidateSubscription.RLock()
+	calls = mock.calls.ValidateSubscription
+	mock.lockValidateSubscription.RUnlock()
 	return calls
 }

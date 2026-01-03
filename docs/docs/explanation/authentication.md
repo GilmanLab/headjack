@@ -1,59 +1,78 @@
 ---
 sidebar_position: 6
 title: Authentication
-description: How Keychain storage and token injection work
+description: How credential storage and token injection work
 ---
 
 # Authentication
 
-Running CLI agents inside containers creates an authentication challenge: how do credentials get from your host machine into the isolated container environment? Headjack solves this through a combination of secure credential storage in macOS Keychain and just-in-time injection when sessions start.
+Running CLI agents inside containers creates an authentication challenge: how do credentials get from your host machine into the isolated container environment? Headjack solves this through a combination of secure credential storage in the system keychain and just-in-time injection when sessions start.
 
 ## The Authentication Challenge
 
-Each CLI agent has its own authentication mechanism:
+Each CLI agent supports multiple authentication methods:
 
-| Agent | Auth Type | Credential |
-|-------|-----------|------------|
-| Claude Code | OAuth 2.0 | OIDC token (`sk-ant-*`) |
-| Gemini CLI | Google OAuth | OAuth credentials + account info |
-| Codex | OpenAI OAuth | Auth JSON file |
+| Agent | Subscription Auth | API Key Auth |
+|-------|------------------|--------------|
+| Claude Code | OAuth token (`sk-ant-*`) | Anthropic API key (`sk-ant-api*`) |
+| Gemini CLI | Google OAuth credentials | Google AI API key (`AIza*`) |
+| Codex | OpenAI OAuth (ChatGPT Plus/Pro) | OpenAI API key (`sk-*`) |
 
-These credentials are typically stored in config files in the user's home directory:
+**Subscription authentication** uses your existing CLI subscription (Claude Pro/Max, ChatGPT Plus/Pro, Gemini subscription) via OAuth tokens.
 
-```
-~/.claude.json              # Claude Code
-~/.gemini/oauth_creds.json  # Gemini CLI
-~/.codex/auth.json          # Codex
-```
-
-Simply mounting these files into containers would work but creates problems:
-
-- **Persistence**: Containers are ephemeral; credentials would be lost on container recreation
-- **Security**: Credentials on disk are readable by any process; keychain provides better protection
-- **Isolation**: Multiple containers might need different credentials (future multi-account support)
+**API key authentication** uses pay-per-use API keys that you purchase separately from the subscription.
 
 ## The Keychain Solution
 
-Headjack stores agent credentials in macOS Keychain, the system's secure credential store:
+Headjack stores agent credentials in the system's secure credential store as JSON:
 
 ```
 +-----------------------------------------------------------+
-|                   macOS Keychain                          |
+|                   System Keychain                         |
 |  +-----------------------------------------------------+  |
-|  | Service: com.headjack                               |  |
+|  | Service: com.headjack.cli                           |  |
 |  +-----------------------------------------------------+  |
-|  | claude-oidc-token  |  sk-ant-oat01-xxxx...          |  |
-|  | gemini-oauth-creds |  {"oauth_creds":...}           |  |
-|  | codex-oauth-creds  |  {"api_key":...}               |  |
+|  | claude-credential  |  {"type":"subscription",       |  |
+|  |                    |   "value":"sk-ant-oat01-..."}  |  |
+|  | gemini-credential  |  {"type":"apikey",             |  |
+|  |                    |   "value":"AIza..."}           |  |
+|  | codex-credential   |  {"type":"subscription",       |  |
+|  |                    |   "value":"{...auth.json...}"}  |  |
 |  +-----------------------------------------------------+  |
 +-----------------------------------------------------------+
 ```
 
-Keychain provides:
+### Platform-Specific Backends
+
+Headjack automatically selects the best available backend for your platform:
+
+| Platform | Backend | Description |
+|----------|---------|-------------|
+| macOS | `keychain` | Native macOS Keychain |
+| Linux (desktop) | `secret-service` | GNOME Keyring or KDE Wallet via D-Bus |
+| Linux (headless) | `keyctl` | Linux kernel keyring |
+| Linux (fallback) | `file` | Encrypted file storage |
+| Windows | `wincred` | Windows Credential Manager |
+
+You can override the backend with the `HEADJACK_KEYRING_BACKEND` environment variable:
+
+```bash
+export HEADJACK_KEYRING_BACKEND=file  # Force encrypted file backend
+```
+
+For the encrypted file backend, provide a password via environment variable or interactive prompt:
+
+```bash
+export HEADJACK_KEYRING_PASSWORD=your-password
+```
+
+### Security Properties
+
+The keychain provides:
 
 - **Encryption at rest**: Credentials are encrypted on disk
 - **Access control**: Only Headjack can read its credentials
-- **OS integration**: Locked when screen locks, protected by system security
+- **OS integration**: Protected by system security mechanisms
 - **No plaintext files**: Credentials never written to disk in readable form
 
 ## Authentication Flow
@@ -65,59 +84,103 @@ The authentication flow has two phases: capture and injection.
 Before using an agent, you must authenticate:
 
 ```bash
-hjk auth claude   # Capture Claude credentials
-hjk auth gemini   # Capture Gemini credentials
-hjk auth codex    # Capture Codex credentials
+hjk auth claude   # Configure Claude credentials
+hjk auth gemini   # Configure Gemini credentials
+hjk auth codex    # Configure Codex credentials
 ```
 
-Each agent has a unique capture process:
+Each command presents a choice between subscription and API key authentication:
 
-**Claude Code**
+```
+$ hjk auth claude
 
-Claude uses `claude setup-token` which runs an interactive OAuth flow:
+Configure claude authentication
 
-```go
-// From claude.go
-cmd := exec.CommandContext(ctx, "claude", "setup-token")
-// Run with PTY for interactive OAuth
-ptmx, err := pty.Start(cmd)
-// Extract token from output
-token := extractToken(outputBuf.String())
-// Store in keychain
-storage.Set(claudeAccountName, token)
+Authentication method:
+  1. Subscription (uses CLAUDE_CODE_OAUTH_TOKEN)
+  2. API Key (uses ANTHROPIC_API_KEY)
+Enter choice (1-2):
 ```
 
-You authenticate in your browser, then paste the token into the terminal.
+The capture process differs by agent and authentication type:
 
-**Gemini CLI**
+**Claude Code (Subscription)**
 
-Gemini credentials are captured from existing config files:
+Claude requires you to manually obtain an OAuth token:
 
-```go
-// From gemini.go
-oauthData, err := os.ReadFile("~/.gemini/oauth_creds.json")
-accountsData, err := os.ReadFile("~/.gemini/google_accounts.json")
-// Combine and store
-config := &GeminiConfig{OAuthCreds: oauthData, GoogleAccounts: accountsData}
-storage.Set(geminiAccountName, string(configJSON))
+```
+$ hjk auth claude
+...
+Enter choice (1-2): 1
+
+Claude subscription credentials must be entered manually.
+
+To get your OAuth token:
+  1. Run: claude setup-token
+  2. Complete the browser login flow
+  3. Copy the token (starts with sk-ant-)
+
+Paste your credential:
 ```
 
-You must have already run `gemini` on your host and completed OAuth.
+You run `claude setup-token` in a separate terminal, complete the OAuth flow, then paste the token.
 
-**Codex**
+**Claude Code (API Key)**
 
-Codex uses `codex login` interactively:
+For API key authentication, you enter your Anthropic API key directly:
 
-```go
-// From codex.go
-cmd := exec.CommandContext(ctx, "codex", "login")
-// Run with PTY for interactive login
-ptmx, err := pty.Start(cmd)
-// After completion, read the auth file
-authData, err := os.ReadFile("~/.codex/auth.json")
-// Store in keychain
-storage.Set(codexAccountName, string(authData))
 ```
+$ hjk auth claude
+...
+Enter choice (1-2): 2
+
+Enter your claude API key.
+
+API key:
+```
+
+**Gemini CLI (Subscription)**
+
+Gemini credentials are auto-detected from existing config files:
+
+```
+$ hjk auth gemini
+...
+Enter choice (1-2): 1
+
+Found existing subscription credentials.
+
+Credentials stored securely.
+```
+
+If not found, you'll see instructions:
+
+```
+Gemini credentials not found.
+
+To authenticate with your Gemini subscription:
+  1. Run: gemini
+  2. Complete the Google OAuth login
+  3. Run: hjk auth gemini
+
+Paste your credential:
+```
+
+**Codex (Subscription)**
+
+Codex credentials are similarly auto-detected from `~/.codex/auth.json`:
+
+```
+$ hjk auth codex
+...
+Enter choice (1-2): 1
+
+Found existing subscription credentials.
+
+Credentials stored securely.
+```
+
+If not found, you must run `codex login` first in a separate terminal.
 
 ### Phase 2: Credential Injection
 
@@ -129,17 +192,21 @@ When a session starts, Headjack injects credentials into the container:
                      v
         +-------------------------+
         |  Read from Keychain     |
+        |  (type + value)         |
         +-------------------------+
                      |
                      v
         +-------------------------+
-        |  Pass as env variable   |
+        |  Set env variable       |
+        |  based on credential    |
+        |  type                   |
         +-------------------------+
                      |
                      v
         +-------------------------+
         |  Container setup writes |
-        |  to expected locations  |
+        |  files (subscription    |
+        |  only, if needed)       |
         +-------------------------+
                      |
                      v
@@ -149,39 +216,25 @@ When a session starts, Headjack injects credentials into the container:
         +-------------------------+
 ```
 
-The implementation differs by agent:
+The environment variable used depends on credential type:
 
-**Claude Code**
+| Agent | Subscription Env Var | API Key Env Var |
+|-------|---------------------|-----------------|
+| Claude | `CLAUDE_CODE_OAUTH_TOKEN` | `ANTHROPIC_API_KEY` |
+| Gemini | `GEMINI_OAUTH_CREDS` | `GEMINI_API_KEY` |
+| Codex | `CODEX_AUTH_JSON` | `OPENAI_API_KEY` |
 
-Claude is passed the token via environment variable:
+**API Key Mode**
 
-```go
-// Environment variable set at session start
-env = append(env, "CLAUDE_CODE_OAUTH_TOKEN=" + token)
-```
+When using API key authentication, the credential is passed directly via environment variable. No file setup is needed inside the container.
 
-Claude Code reads this variable directly.
+**Subscription Mode**
 
-**Gemini CLI**
+Subscription authentication may require additional file setup in the container:
 
-Gemini needs config files, so Headjack writes them at instance start:
-
-```go
-setupCmd := `mkdir -p ~/.gemini && \
-echo "$GEMINI_OAUTH_CREDS" | jq -r '.oauth_creds' > ~/.gemini/oauth_creds.json && \
-echo "$GEMINI_OAUTH_CREDS" | jq -r '.google_accounts' > ~/.gemini/google_accounts.json && \
-echo '{"security":{"auth":{"selectedType":"oauth-personal"}}}' > ~/.gemini/settings.json`
-```
-
-The combined credentials are passed as `GEMINI_OAUTH_CREDS`, then split into the expected files.
-
-**Codex**
-
-Codex similarly needs a config file:
-
-```go
-setupCmd := `mkdir -p ~/.codex && echo "$CODEX_AUTH_JSON" > ~/.codex/auth.json`
-```
+- **Claude**: Creates `~/.claude.json` to skip onboarding prompts
+- **Gemini**: Splits the combined JSON into `~/.gemini/oauth_creds.json` and `~/.gemini/google_accounts.json`
+- **Codex**: Writes `~/.codex/auth.json`
 
 ## Security Properties
 
@@ -201,12 +254,12 @@ Credentials are written to the container filesystem only when a session starts. 
 
 ### Keychain Protection
 
-macOS Keychain provides:
+Platform keychains provide:
 
 - Encryption with user-specific keys
-- Access control lists (ACL)
-- Integration with Touch ID / system authentication
-- Automatic locking when system sleeps
+- Access control (only Headjack can access its credentials)
+- Integration with system authentication
+- Protection by OS security mechanisms
 
 ### No Cross-Instance Leakage
 
@@ -216,7 +269,7 @@ Each session gets its own credential injection. Sessions in different instances 
 
 ### Per-Machine Authentication
 
-Credentials are stored in the local machine's Keychain. If you use Headjack on multiple machines, you must `hjk auth` on each one.
+Credentials are stored in the local machine's keychain. If you use Headjack on multiple machines, you must run `hjk auth` on each one.
 
 ### Single Account per Agent
 
@@ -232,12 +285,12 @@ OAuth tokens expire. When they do, you must re-run `hjk auth` to capture fresh t
 
 ## Troubleshooting Auth Issues
 
-### "Token not found"
+### "Token not found" or "auth not configured"
 
 The credential hasn't been captured:
 
 ```bash
-hjk auth claude  # Capture Claude credentials
+hjk auth claude  # Configure Claude credentials
 ```
 
 ### "Authentication failed" inside container
@@ -245,20 +298,22 @@ hjk auth claude  # Capture Claude credentials
 The token may have expired:
 
 ```bash
-hjk auth claude  # Re-capture fresh token
+hjk auth claude  # Re-capture fresh credential
 hjk recreate <instance>  # Recreate container with new credentials
 ```
 
 ### Claude onboarding prompt
 
-Claude Code shows onboarding prompts if it doesn't find expected config:
+Claude Code shows onboarding prompts if it doesn't find expected config. Headjack creates `~/.claude.json` automatically when using subscription authentication. If you see onboarding prompts, the setup command may have failed. Check container logs.
 
-```go
-// Headjack creates this to skip onboarding
-setupCmd := `mkdir -p ~/.claude && echo '{"hasCompletedOnboarding":true}' > ~/.claude.json`
+### Switching between subscription and API key
+
+To switch authentication methods, simply run `hjk auth` again and select the other option:
+
+```bash
+hjk auth claude  # Select option 2 for API key
+hjk recreate <instance>  # Recreate to use new credential type
 ```
-
-If you see onboarding prompts, the setup command may have failed. Check container logs.
 
 ## Why Not SSH Agent Forwarding?
 
@@ -266,9 +321,9 @@ SSH agent forwarding is a common solution for credential access in containers. H
 
 1. **Different credential types**: Agent CLIs don't use SSH keys
 2. **OAuth complexity**: OAuth tokens aren't compatible with SSH agent protocol
-3. **VM boundary**: SSH agent sockets don't cross the hypervisor boundary easily
+3. **VM boundary**: SSH agent sockets don't cross hypervisor/container boundaries easily
 
-The environment variable + file-writing approach works reliably across the VM boundary that Apple Containerization creates.
+The environment variable + file-writing approach works reliably across container boundaries.
 
 ## Related
 

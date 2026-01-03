@@ -52,7 +52,7 @@ func TestReadGeminiConfig(t *testing.T) {
 
 		got, err := readGeminiConfig()
 		assert.Nil(t, got)
-		assert.ErrorContains(t, err, "gemini credentials not found")
+		assert.ErrorContains(t, err, "Gemini credentials not found")
 	})
 
 	t.Run("invalid oauth json", func(t *testing.T) {
