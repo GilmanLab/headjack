@@ -4,16 +4,17 @@
 [!darwin] skip 'keyring requires DBus on Linux'
 
 # Check Claude auth status (may be configured or not depending on machine)
+# Output is "not configured", "subscription", "api key", or "configured (unknown type)"
 exec hjk auth claude --status
-stdout 'claude: (configured|not configured)'
+stdout 'claude: (not configured|subscription|api key|configured)'
 ! stderr .
 
 # Check Gemini auth status
 exec hjk auth gemini --status
-stdout 'gemini: (configured|not configured)'
+stdout 'gemini: (not configured|subscription|api key|configured)'
 ! stderr .
 
 # Check Codex auth status
 exec hjk auth codex --status
-stdout 'codex: (configured|not configured)'
+stdout 'codex: (not configured|subscription|api key|configured)'
 ! stderr .

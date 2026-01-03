@@ -1,9 +1,6 @@
 # Test hjk run with detached mode and full instance lifecycle
 # This test requires a container runtime
 
-# Clean up any leftover containers from previous runs
-cleanup_containers
-
 # Create a test git repository with unique name
 exec git init testrepo-lifecycle
 cd testrepo-lifecycle

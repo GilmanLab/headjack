@@ -1,8 +1,6 @@
 # Test hjk kill command for terminating sessions
 # This test requires a container runtime
 
-cleanup_containers
-
 # Create a test git repository with unique name
 exec git init testrepo-kill
 cd testrepo-kill
