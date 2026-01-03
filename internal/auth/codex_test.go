@@ -36,7 +36,7 @@ func TestReadCodexAuth(t *testing.T) {
 
 		got, err := readCodexAuth()
 		assert.Nil(t, got)
-		assert.ErrorContains(t, err, "codex auth.json not found")
+		assert.ErrorContains(t, err, "Codex credentials not found")
 	})
 
 	t.Run("empty auth.json", func(t *testing.T) {

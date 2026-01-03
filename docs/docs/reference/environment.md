@@ -78,12 +78,59 @@ agents:
       OPENAI_API_KEY: "your-api-key"
 ```
 
+## Credential Environment Variables
+
+When running agent sessions, Headjack injects credential environment variables based on your authentication configuration. The variable used depends on the credential type (subscription or API key).
+
+### Claude
+
+| Variable | Credential Type | Description |
+|----------|-----------------|-------------|
+| `CLAUDE_CODE_OAUTH_TOKEN` | Subscription | OAuth token from Claude Pro/Max subscription |
+| `ANTHROPIC_API_KEY` | API Key | Anthropic API key for pay-per-use billing |
+
+### Gemini
+
+| Variable | Credential Type | Description |
+|----------|-----------------|-------------|
+| `GEMINI_OAUTH_CREDS` | Subscription | Combined OAuth credentials JSON from `~/.gemini/` |
+| `GEMINI_API_KEY` | API Key | Google AI API key for pay-per-use billing |
+
+### Codex
+
+| Variable | Credential Type | Description |
+|----------|-----------------|-------------|
+| `CODEX_AUTH_JSON` | Subscription | OAuth credentials JSON from `~/.codex/auth.json` |
+| `OPENAI_API_KEY` | API Key | OpenAI API key for pay-per-use billing |
+
+These variables are set automatically when you run `hjk run --agent <agent>`. You configure which credential type to use via `hjk auth <agent>`.
+
+## Keyring Environment Variables
+
+These environment variables configure the cross-platform keyring backend used for credential storage.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `HEADJACK_KEYRING_BACKEND` | string | Override the keyring backend. Options: `keychain` (macOS), `secret-service` (Linux desktop), `keyctl` (Linux kernel), `file` (encrypted file) |
+| `HEADJACK_KEYRING_PASSWORD` | string | Password for the encrypted file backend. Required when using `file` backend without interactive prompt. |
+
+### Example Usage
+
+```bash
+# Force encrypted file backend on Linux
+export HEADJACK_KEYRING_BACKEND=file
+export HEADJACK_KEYRING_PASSWORD=my-secure-password
+
+# Use GNOME Keyring on Linux
+export HEADJACK_KEYRING_BACKEND=secret-service
+```
+
 ## Container Environment
 
 When Headjack starts a container, it sets up the environment to include:
 
 1. Agent-specific environment variables from configuration
-2. Any credentials configured via `hjk auth` commands
+2. Credential environment variables based on authentication type (see above)
 3. Standard container environment variables
 
 The exact environment passed to containers depends on the agent type and authentication configuration.

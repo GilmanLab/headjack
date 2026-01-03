@@ -1,19 +1,25 @@
 package auth
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
-
-// geminiAccountName is the storage key for Gemini credentials.
-const geminiAccountName = "gemini-oauth-creds"
 
 // geminiConfigDir is the path where Gemini CLI stores its configuration.
 var geminiConfigDir = filepath.Join(os.Getenv("HOME"), ".gemini")
+
+// Gemini provider configuration.
+var geminiInfo = ProviderInfo{
+	Name:                   "gemini",
+	SubscriptionEnvVar:     "GEMINI_OAUTH_CREDS",
+	APIKeyEnvVar:           "GEMINI_API_KEY",
+	KeychainAccount:        "gemini-credential",
+	RequiresContainerSetup: true,
+}
 
 // GeminiConfig holds all configuration needed to authenticate Gemini CLI.
 type GeminiConfig struct {
@@ -29,31 +35,84 @@ func NewGeminiProvider() *GeminiProvider {
 	return &GeminiProvider{}
 }
 
-// Authenticate reads cached Gemini CLI config files and stores them in the keychain.
-// If credentials don't exist, it returns an error instructing the user to run gemini first.
-func (p *GeminiProvider) Authenticate(_ context.Context, storage Storage) error {
-	// Read the cached config from Gemini CLI
+// Info returns metadata about the Gemini provider.
+func (p *GeminiProvider) Info() ProviderInfo {
+	return geminiInfo
+}
+
+// CheckSubscription reads cached Gemini CLI credentials from ~/.gemini/.
+// If credentials exist and are valid, returns them as a JSON string.
+// If credentials don't exist, returns an error with instructions.
+func (p *GeminiProvider) CheckSubscription() (string, error) {
 	config, err := readGeminiConfig()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	// Store the config as JSON
+	// Marshal the config to JSON for storage
 	configJSON, err := json.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
+		return "", fmt.Errorf("marshal config: %w", err)
 	}
 
-	if err := storage.Set(geminiAccountName, string(configJSON)); err != nil {
-		return fmt.Errorf("store config: %w", err)
+	return string(configJSON), nil
+}
+
+// ValidateSubscription validates Gemini OAuth credentials.
+func (p *GeminiProvider) ValidateSubscription(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return errors.New("credentials cannot be empty")
+	}
+
+	// Try to parse as GeminiConfig JSON
+	var config GeminiConfig
+	if err := json.Unmarshal([]byte(value), &config); err != nil {
+		return fmt.Errorf("invalid JSON format: %w", err)
+	}
+
+	if len(config.OAuthCreds) == 0 {
+		return errors.New("missing oauth_creds in credentials")
+	}
+	if len(config.GoogleAccounts) == 0 {
+		return errors.New("missing google_accounts in credentials")
+	}
+
+	// Validate OAuth creds have a refresh token
+	var oauthCreds struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.Unmarshal(config.OAuthCreds, &oauthCreds); err != nil {
+		return fmt.Errorf("parse oauth_creds: %w", err)
+	}
+	if oauthCreds.RefreshToken == "" {
+		return errors.New("missing refresh_token in oauth_creds")
 	}
 
 	return nil
 }
 
-// Get retrieves the stored Gemini config.
-func (p *GeminiProvider) Get(storage Storage) (string, error) {
-	return storage.Get(geminiAccountName)
+// ValidateAPIKey validates a Google AI API key.
+func (p *GeminiProvider) ValidateAPIKey(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return errors.New("API key cannot be empty")
+	}
+	// Google AI API keys typically start with "AIza"
+	if !strings.HasPrefix(value, "AIza") {
+		return errors.New("invalid Google AI API key: must start with 'AIza'")
+	}
+	return nil
+}
+
+// Store saves a credential to storage.
+func (p *GeminiProvider) Store(storage Storage, cred Credential) error {
+	return StoreCredential(storage, geminiInfo.KeychainAccount, cred)
+}
+
+// Load retrieves the stored credential for Gemini.
+func (p *GeminiProvider) Load(storage Storage) (*Credential, error) {
+	return LoadCredential(storage, geminiInfo.KeychainAccount)
 }
 
 // readGeminiConfig reads OAuth credentials and account info from Gemini CLI's cache.
@@ -63,7 +122,13 @@ func readGeminiConfig() (*GeminiConfig, error) {
 	oauthData, err := os.ReadFile(oauthPath) //nolint:gosec // Path is constructed from HOME env var
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.New("gemini credentials not found: please run 'gemini' and complete the OAuth login first")
+			//nolint:staticcheck // ST1005: Intentionally capitalized - user-facing instructions
+			return nil, errors.New(`Gemini credentials not found.
+
+To authenticate with your Gemini subscription:
+  1. Run: gemini
+  2. Complete the Google OAuth login
+  3. Run: hjk auth gemini`)
 		}
 		return nil, fmt.Errorf("read oauth_creds.json: %w", err)
 	}

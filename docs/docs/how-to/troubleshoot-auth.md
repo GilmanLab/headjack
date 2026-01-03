@@ -8,94 +8,90 @@ description: How to troubleshoot authentication issues with Claude, Gemini, and 
 
 Diagnose and resolve common authentication problems for Claude, Gemini, and Codex agents.
 
-## "CLI not found" Errors
+## "auth not configured" Error
 
 ### Symptom
 
 ```
-claude CLI not found in PATH: please install Claude Code first
-codex CLI not found in PATH: please install OpenAI Codex CLI first
+claude auth not configured: run 'hjk auth claude' first
+gemini auth not configured: run 'hjk auth gemini' first
+codex auth not configured: run 'hjk auth codex' first
 ```
 
 ### Solution
 
-Install the missing CLI tool:
-
-- **Claude**: Install Claude Code from [claude.ai/code](https://claude.ai/code)
-- **Gemini**: Install Gemini CLI with `npm install -g @anthropic-ai/gemini-cli`
-- **Codex**: Install OpenAI Codex CLI with `npm install -g @openai/codex`
-
-Verify the CLI is in your PATH:
+Run the authentication command for the agent:
 
 ```bash
-which claude
-which gemini
-which codex
+hjk auth claude   # or gemini, codex
 ```
 
-## "Credentials not found" Errors
+Choose either subscription or API key authentication when prompted.
+
+## "Credentials not found" Errors (Subscription)
 
 ### Symptom (Gemini)
 
 ```
-gemini credentials not found: please run 'gemini' and complete the OAuth login first
-google_accounts.json not found: please run 'gemini' and complete the OAuth login first
+Gemini credentials not found.
+
+To authenticate with your Gemini subscription:
+  1. Run: gemini
+  2. Complete the Google OAuth login
+  3. Run: hjk auth gemini
 ```
 
 ### Solution
 
-Gemini requires you to authenticate with the CLI first:
+Gemini subscription authentication requires existing CLI credentials:
 
 ```bash
-gemini
-```
-
-Complete the Google OAuth flow in the browser, then re-run:
-
-```bash
-hjk auth gemini
+gemini  # Complete the Google OAuth flow
+hjk auth gemini  # Select option 1
 ```
 
 ### Symptom (Codex)
 
 ```
-codex auth.json not found: login may have failed
-codex auth.json is empty: login may have failed
+Codex credentials not found.
+
+To authenticate with your ChatGPT subscription:
+  1. Run: codex login
+  2. Complete the OAuth flow in your browser
+  3. Run: hjk auth codex
 ```
 
 ### Solution
 
-The Codex login flow did not complete successfully. Run authentication again:
+Codex subscription authentication requires existing CLI credentials:
 
 ```bash
-hjk auth codex
+codex login  # Complete the OAuth flow
+hjk auth codex  # Select option 1
 ```
 
-Ensure you complete the OAuth flow in the browser before closing it.
+## Invalid Token/Key Format
 
-## "No token received" Error
-
-### Symptom (Claude)
+### Symptom
 
 ```
-no token received from claude setup-token
+invalid Claude OAuth token: must start with 'sk-ant-'
+invalid Anthropic API key: must start with 'sk-ant-api'
+invalid Google AI API key: must start with 'AIza'
+invalid OpenAI API key: must start with 'sk-'
 ```
 
 ### Solution
 
-The Claude authentication flow did not complete successfully. This can happen if:
+Ensure you're entering the correct credential type:
 
-- You cancelled the login flow
-- The browser login timed out
-- Network issues interrupted the flow
+| Agent | Subscription Token | API Key |
+|-------|-------------------|---------|
+| Claude | Starts with `sk-ant-` | Starts with `sk-ant-api` |
+| Gemini | JSON from `~/.gemini/` | Starts with `AIza` |
+| Codex | JSON from `~/.codex/auth.json` | Starts with `sk-` |
 
-Run authentication again:
-
-```bash
-hjk auth claude
-```
-
-Complete all steps in the browser and enter the code when prompted.
+If you selected the wrong option, run `hjk auth` again and choose the other option.
 
 ## Token Expired or Invalid
 
@@ -105,34 +101,42 @@ The agent fails to authenticate when running, even though you previously ran `hj
 
 ### Solution
 
-Re-authenticate to get a fresh token:
+Re-authenticate to get fresh credentials:
 
 ```bash
-# For Claude
+# For Claude (subscription)
+# Run 'claude setup-token' first, then:
 hjk auth claude
 
-# For Gemini
+# For Gemini (subscription)
 gemini  # Complete OAuth flow first
 hjk auth gemini
 
-# For Codex
+# For Codex (subscription)
+codex login  # Complete OAuth flow first
 hjk auth codex
+
+# For any agent (API key)
+hjk auth <agent>  # Select option 2 and enter your API key
 ```
 
-## Keychain Access Denied
+After re-authenticating, recreate your instance:
+
+```bash
+hjk recreate my-feature
+```
+
+## Keychain Access Issues
 
 ### Symptom
 
 Authentication fails with a keychain or permission error.
 
-### Solution
+### Solution (macOS)
 
 1. Open **Keychain Access** (in Applications > Utilities)
-
 2. Search for `com.headjack.cli`
-
 3. Delete any existing Headjack entries
-
 4. Re-run authentication:
 
    ```bash
@@ -141,31 +145,74 @@ Authentication fails with a keychain or permission error.
 
 5. When prompted by macOS, allow Headjack to access the keychain
 
+### Solution (Linux)
+
+If using the encrypted file backend, ensure the password is set:
+
+```bash
+export HEADJACK_KEYRING_PASSWORD=your-password
+hjk auth claude
+```
+
+Or switch to a different backend:
+
+```bash
+export HEADJACK_KEYRING_BACKEND=secret-service  # For GNOME Keyring
+hjk auth claude
+```
+
 ## Viewing Stored Credentials
 
-To check if credentials are stored in the keychain:
+### macOS
 
 1. Open **Keychain Access**
-
 2. Search for `com.headjack.cli`
-
 3. Look for entries labeled:
-   - `Headjack - claude-oidc-token` (Claude)
-   - `Headjack - gemini-oauth-creds` (Gemini)
-   - `Headjack - codex-oauth-creds` (Codex)
+   - `claude-credential`
+   - `gemini-credential`
+   - `codex-credential`
+
+### Linux
+
+Credentials are stored in your configured keyring backend. The location depends on the backend:
+
+- **secret-service**: GNOME Keyring or KDE Wallet
+- **keyctl**: Linux kernel keyring
+- **file**: `~/.config/headjack/keyring/`
 
 ## Clearing All Authentication
 
 To remove all stored credentials and start fresh:
 
+### macOS
+
 1. Open **Keychain Access**
-
 2. Search for `com.headjack.cli`
-
 3. Delete all matching entries
-
 4. Re-authenticate each agent as needed
+
+### Linux
+
+```bash
+# If using file backend
+rm -rf ~/.config/headjack/keyring/
+
+# Then re-authenticate
+hjk auth claude
+hjk auth gemini
+hjk auth codex
+```
+
+## Switching Between Subscription and API Key
+
+To switch authentication methods:
+
+```bash
+hjk auth claude  # Select the other option when prompted
+hjk recreate my-feature  # Apply new credentials to existing instance
+```
 
 ## Related
 
-- [Authenticate Agents](./authenticate) - set up authentication for Claude, Gemini, or Codex
+- [Authenticate Agents](./authenticate) - Set up authentication for Claude, Gemini, or Codex
+- [Authentication Explanation](../explanation/authentication) - How credential storage works
