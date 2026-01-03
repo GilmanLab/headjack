@@ -46,7 +46,7 @@ base --> systemd --> dind
 | Agent CLIs (Claude, Gemini, Codex) | Yes | Yes | Yes |
 | Version managers (pyenv, nodenv, goenv, rustup) | Yes | Yes | Yes |
 | Development tools (git, gh, vim, ripgrep, etc.) | Yes | Yes | Yes |
-| Terminal multiplexer (Zellij) | Yes | Yes | Yes |
+| Terminal multiplexer (tmux) | Yes | Yes | Yes |
 | systemd init system | No | Yes | Yes |
 | Docker CE | No | No | Yes |
 | Docker Compose plugin | No | No | Yes |

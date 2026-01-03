@@ -35,12 +35,6 @@ Useful when the container environment is corrupted or needs a fresh state. The w
 |------|------|---------|-------------|
 | `--base` | string | | Use a different base image for the new container |
 
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

@@ -22,14 +22,6 @@ Displays the version, commit hash, and build date of the Headjack installation.
 
 This command takes no arguments.
 
-## Flags
-
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

@@ -27,11 +27,10 @@ const DefaultBaseImage = "ghcr.io/jmgilman/headjack:base"
 
 // Sentinel errors for configuration operations.
 var (
-	ErrInvalidKey         = errors.New("invalid configuration key")
-	ErrInvalidAgent       = errors.New("invalid agent name")
-	ErrInvalidMultiplexer = errors.New("invalid multiplexer name")
-	ErrInvalidRuntime     = errors.New("invalid runtime name")
-	ErrNoEditor           = errors.New("$EDITOR environment variable not set")
+	ErrInvalidKey     = errors.New("invalid configuration key")
+	ErrInvalidAgent   = errors.New("invalid agent name")
+	ErrInvalidRuntime = errors.New("invalid runtime name")
+	ErrNoEditor       = errors.New("$EDITOR environment variable not set")
 )
 
 // validAgents contains the allowed agent names (unexported).
@@ -39,12 +38,6 @@ var validAgents = map[string]bool{
 	"claude": true,
 	"gemini": true,
 	"codex":  true,
-}
-
-// validMultiplexers contains the allowed multiplexer names (unexported).
-var validMultiplexers = map[string]bool{
-	"tmux":   true,
-	"zellij": true,
 }
 
 // validRuntimes contains the allowed runtime names (unexported).
@@ -69,9 +62,8 @@ type Config struct {
 
 // DefaultConfig holds default values for new instances.
 type DefaultConfig struct {
-	Agent       string `mapstructure:"agent" validate:"omitempty,oneof=claude gemini codex"`
-	BaseImage   string `mapstructure:"base_image" validate:"required"`
-	Multiplexer string `mapstructure:"multiplexer" validate:"omitempty,oneof=tmux zellij"`
+	Agent     string `mapstructure:"agent" validate:"omitempty,oneof=claude gemini codex"`
+	BaseImage string `mapstructure:"base_image" validate:"required"`
 }
 
 // AgentConfig holds agent-specific configuration.
@@ -132,8 +124,6 @@ func NewLoader() (*Loader, error) {
 	//nolint:errcheck // BindEnv only fails with zero arguments
 	v.BindEnv("default.base_image", "HEADJACK_BASE_IMAGE")
 	//nolint:errcheck // BindEnv only fails with zero arguments
-	v.BindEnv("default.multiplexer", "HEADJACK_MULTIPLEXER")
-	//nolint:errcheck // BindEnv only fails with zero arguments
 	v.BindEnv("storage.worktrees", "HEADJACK_WORKTREE_DIR")
 
 	l := &Loader{
@@ -152,7 +142,6 @@ func NewLoader() (*Loader, error) {
 func (l *Loader) setDefaults() {
 	l.v.SetDefault("default.agent", "")
 	l.v.SetDefault("default.base_image", DefaultBaseImage)
-	l.v.SetDefault("default.multiplexer", "tmux")
 	l.v.SetDefault("storage.worktrees", "~/.local/share/headjack/git")
 	l.v.SetDefault("storage.catalog", "~/.local/share/headjack/catalog.json")
 	l.v.SetDefault("storage.logs", "~/.local/share/headjack/logs")
@@ -224,13 +213,6 @@ func (l *Loader) Set(key, value string) error {
 	if key == "default.agent" && value != "" {
 		if !validAgents[value] {
 			return fmt.Errorf("%w: %s (valid: claude, gemini, codex)", ErrInvalidAgent, value)
-		}
-	}
-
-	// Validate multiplexer name if setting default.multiplexer
-	if key == "default.multiplexer" && value != "" {
-		if !validMultiplexers[value] {
-			return fmt.Errorf("%w: %s (valid: tmux, zellij)", ErrInvalidMultiplexer, value)
 		}
 	}
 
@@ -330,16 +312,6 @@ func IsValidAgent(name string) bool {
 // ValidAgentNames returns the list of valid agent names.
 func ValidAgentNames() []string {
 	return []string{"claude", "gemini", "codex"}
-}
-
-// IsValidMultiplexer is a package-level helper for checking multiplexer validity.
-func IsValidMultiplexer(name string) bool {
-	return validMultiplexers[name]
-}
-
-// ValidMultiplexerNames returns the list of valid multiplexer names.
-func ValidMultiplexerNames() []string {
-	return []string{"tmux", "zellij"}
 }
 
 // IsValidRuntime is a package-level helper for checking runtime validity.

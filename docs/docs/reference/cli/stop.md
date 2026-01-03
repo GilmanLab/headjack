@@ -26,14 +26,6 @@ This command is useful for freeing up system resources when an instance is not a
 |----------|-------------|
 | `branch` | Git branch name of the instance to stop (required) |
 
-## Flags
-
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

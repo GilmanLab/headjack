@@ -68,14 +68,6 @@ This command runs the Codex login flow which:
 
 The stored credentials use your ChatGPT Plus/Pro/Team/Enterprise subscription rather than API billing.
 
-## Flags
-
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash
