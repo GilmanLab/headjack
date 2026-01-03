@@ -36,7 +36,7 @@ Before starting, ensure you have:
 
 - **macOS with Podman installed** - Headjack uses Podman for containerization by default
 - **Git installed** - Verify with `git --version`
-- **A Claude Pro or Max subscription** - For Claude Code authentication
+- **A Claude Pro/Max subscription OR an Anthropic API key** - For Claude Code authentication
 - **A git repository to work in** - Any project repository will work
 
 ## Step 1: Install Headjack
@@ -62,7 +62,7 @@ headjack version 0.1.0 (abc1234)
 
 ## Step 2: Authenticate Claude Code
 
-Before spawning a Claude agent, we need to configure authentication. Headjack stores credentials securely in the macOS Keychain and injects them into containers automatically.
+Before spawning a Claude agent, we need to configure authentication. Headjack stores credentials securely in the system keychain and injects them into containers automatically.
 
 Run the authentication command:
 
@@ -70,19 +70,41 @@ Run the authentication command:
 hjk auth claude
 ```
 
-This starts an interactive flow:
+You will be prompted to choose an authentication method:
 
-1. A URL is displayed. Open it in your browser.
-2. Log in with your Anthropic account.
-3. A code appears in your browser. Enter it in the terminal when prompted.
+```
+Configure claude authentication
+
+Authentication method:
+  1. Subscription (uses CLAUDE_CODE_OAUTH_TOKEN)
+  2. API Key (uses ANTHROPIC_API_KEY)
+Enter choice (1-2):
+```
+
+### Option 1: Subscription (Claude Pro/Max)
+
+If you have a Claude Pro or Max subscription:
+
+1. Select option 1
+2. In a **separate terminal**, run `claude setup-token`
+3. Complete the browser login flow
+4. Copy the token that appears (starts with `sk-ant-`)
+5. Paste it when prompted by `hjk auth claude`
+
+### Option 2: API Key
+
+If you prefer pay-per-use API billing:
+
+1. Select option 2
+2. Enter your Anthropic API key (starts with `sk-ant-api`)
 
 When successful, you will see:
 
 ```
-Authentication successful! Token stored in macOS Keychain.
+Credentials stored securely.
 ```
 
-The stored token uses your Claude Pro/Max subscription rather than API billing. It persists across sessions and only needs to be configured once.
+The credential persists across sessions and only needs to be configured once.
 
 ## Step 3: Create Your First Instance and Session
 

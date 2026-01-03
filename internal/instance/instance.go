@@ -74,8 +74,10 @@ type Session struct {
 
 // CreateSessionConfig configures session creation.
 type CreateSessionConfig struct {
-	Type    string   // Session type (shell, claude, gemini, codex)
-	Name    string   // Optional session name (auto-generated if empty)
-	Command []string // Initial command to run (optional, defaults to shell)
-	Env     []string // Additional environment variables
+	Type               string   // Session type (shell, claude, gemini, codex)
+	Name               string   // Optional session name (auto-generated if empty)
+	Command            []string // Initial command to run (optional, defaults to shell)
+	Env                []string // Additional environment variables
+	CredentialType     string   // Credential type: "subscription" or "apikey" (empty for shell)
+	RequiresAgentSetup bool     // Whether agent needs file setup in container
 }

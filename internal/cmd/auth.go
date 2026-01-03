@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -14,8 +15,8 @@ var authCmd = &cobra.Command{
 	Short: "Configure authentication for agent CLIs",
 	Long: `Configure authentication for supported agent CLIs.
 
-Runs the agent-specific authentication flow and stores credentials
-securely in the macOS Keychain.`,
+Prompts for authentication method (subscription or API key) and stores
+credentials securely in the system keychain.`,
 }
 
 var authClaudeCmd = &cobra.Command{
@@ -23,13 +24,9 @@ var authClaudeCmd = &cobra.Command{
 	Short: "Configure Claude Code authentication",
 	Long: `Configure Claude Code authentication for use in Headjack containers.
 
-This command runs the Claude setup-token flow which:
-1. Displays a URL to open in your browser
-2. Prompts you to log in with your Anthropic account
-3. Presents a code to enter back in the terminal
-4. Stores the resulting OAuth token securely in macOS Keychain
-
-The stored token uses your Claude Pro/Max subscription rather than API billing.`,
+Choose between:
+  1. Subscription: Uses your Claude Pro/Max subscription via OAuth token
+  2. API Key: Uses an Anthropic API key for pay-per-use billing`,
 	Example: `  # Set up Claude Code authentication
   headjack auth claude`,
 	RunE: runAuthClaude,
@@ -40,14 +37,10 @@ var authGeminiCmd = &cobra.Command{
 	Short: "Configure Gemini CLI authentication",
 	Long: `Configure Gemini CLI authentication for use in Headjack containers.
 
-This command reads existing Gemini CLI credentials and stores them securely
-in the macOS Keychain. You must first authenticate with Gemini CLI by running
-'gemini' and completing the Google OAuth login flow.
-
-The stored credentials use your Google AI Pro/Ultra subscription rather than API billing.`,
-	Example: `  # First, authenticate with Gemini CLI (if not already done)
-  gemini
-  # Then, store credentials in Headjack
+Choose between:
+  1. Subscription: Uses your Google AI Pro/Ultra subscription via OAuth
+  2. API Key: Uses a Google AI API key for pay-per-use billing`,
+	Example: `  # Set up Gemini CLI authentication
   headjack auth gemini`,
 	RunE: runAuthGemini,
 }
@@ -57,67 +50,177 @@ var authCodexCmd = &cobra.Command{
 	Short: "Configure OpenAI Codex CLI authentication",
 	Long: `Configure OpenAI Codex CLI authentication for use in Headjack containers.
 
-This command runs the Codex login flow which:
-1. Opens a browser to localhost:1455 for ChatGPT OAuth
-2. Prompts you to log in with your ChatGPT account
-3. Creates auth.json at ~/.codex/auth.json
-4. Stores the auth.json contents securely in macOS Keychain
-
-The stored credentials use your ChatGPT Plus/Pro/Team/Enterprise subscription rather than API billing.`,
+Choose between:
+  1. Subscription: Uses your ChatGPT Plus/Pro/Team subscription via OAuth
+  2. API Key: Uses an OpenAI API key for pay-per-use billing`,
 	Example: `  # Set up Codex CLI authentication
   headjack auth codex`,
 	RunE: runAuthCodex,
 }
+
+var authStatusFlag bool
 
 func init() {
 	rootCmd.AddCommand(authCmd)
 	authCmd.AddCommand(authClaudeCmd)
 	authCmd.AddCommand(authGeminiCmd)
 	authCmd.AddCommand(authCodexCmd)
+
+	// Add --status flag to all auth subcommands
+	for _, cmd := range []*cobra.Command{authClaudeCmd, authGeminiCmd, authCodexCmd} {
+		cmd.Flags().BoolVar(&authStatusFlag, "status", false, "Show current authentication status")
+	}
 }
 
-func runAuthClaude(cmd *cobra.Command, _ []string) error {
-	fmt.Println("Starting Claude authentication flow...")
-	fmt.Println()
+func runAuthClaude(_ *cobra.Command, _ []string) error {
+	return runAuth(auth.NewClaudeProvider())
+}
 
-	provider := auth.NewClaudeProvider()
-	storage := keychain.New()
+func runAuthGemini(_ *cobra.Command, _ []string) error {
+	return runAuth(auth.NewGeminiProvider())
+}
 
-	if err := provider.Authenticate(cmd.Context(), storage); err != nil {
-		return fmt.Errorf("authentication failed: %w", err)
+func runAuthCodex(_ *cobra.Command, _ []string) error {
+	return runAuth(auth.NewCodexProvider())
+}
+
+// runAuth handles both --status checks and interactive auth flows.
+func runAuth(provider auth.Provider) error {
+	if authStatusFlag {
+		return showAuthStatus(provider)
+	}
+	return runAuthFlow(provider)
+}
+
+// showAuthStatus displays the current authentication status for a provider.
+func showAuthStatus(provider auth.Provider) error {
+	storage, err := keychain.New()
+	if err != nil {
+		return fmt.Errorf("initialize credential storage: %w", err)
 	}
 
-	fmt.Println()
-	fmt.Println("Authentication successful! Token stored in macOS Keychain.")
+	info := provider.Info()
+	cred, err := provider.Load(storage)
+	if errors.Is(err, keychain.ErrNotFound) {
+		fmt.Printf("%s: not configured\n", info.Name)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("load credential: %w", err)
+	}
+
+	switch cred.Type {
+	case auth.CredentialTypeSubscription:
+		fmt.Printf("%s: subscription\n", info.Name)
+	case auth.CredentialTypeAPIKey:
+		fmt.Printf("%s: api key\n", info.Name)
+	default:
+		fmt.Printf("%s: configured (unknown type)\n", info.Name)
+	}
+
 	return nil
 }
 
-func runAuthGemini(cmd *cobra.Command, _ []string) error {
-	fmt.Println("Reading Gemini CLI credentials...")
-
-	provider := auth.NewGeminiProvider()
-	storage := keychain.New()
-
-	if err := provider.Authenticate(cmd.Context(), storage); err != nil {
-		return fmt.Errorf("failed to store credentials: %w", err)
+// runAuthFlow runs the interactive authentication flow for a provider.
+func runAuthFlow(provider auth.Provider) error {
+	storage, err := keychain.New()
+	if err != nil {
+		return fmt.Errorf("initialize credential storage: %w", err)
 	}
 
-	fmt.Println("Credentials stored in macOS Keychain.")
+	prompter := auth.NewTerminalPrompter()
+	info := provider.Info()
+
+	prompter.Print(fmt.Sprintf("Configure %s authentication", info.Name))
+	prompter.Print("")
+
+	choice, err := prompter.PromptChoice("Authentication method:", []string{
+		"Subscription",
+		"API Key",
+	})
+	if err != nil {
+		return fmt.Errorf("select auth method: %w", err)
+	}
+
+	prompter.Print("")
+
+	var cred auth.Credential
+
+	switch choice {
+	case 0: // Subscription
+		cred, err = handleSubscriptionAuth(provider, prompter)
+	case 1: // API Key
+		cred, err = handleAPIKeyAuth(provider, prompter)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := provider.Store(storage, cred); err != nil {
+		return fmt.Errorf("store credential: %w", err)
+	}
+
+	prompter.Print("")
+	prompter.Print("Credentials stored securely.")
 	return nil
 }
 
-func runAuthCodex(cmd *cobra.Command, _ []string) error {
-	fmt.Println("Starting Codex authentication flow...")
-	fmt.Println()
-
-	provider := auth.NewCodexProvider()
-	storage := keychain.New()
-
-	if err := provider.Authenticate(cmd.Context(), storage); err != nil {
-		return fmt.Errorf("authentication failed: %w", err)
+// handleSubscriptionAuth handles subscription-based authentication.
+// For Claude, prompts for manual token entry.
+// For Gemini/Codex, attempts to read existing credentials from config files.
+func handleSubscriptionAuth(provider auth.Provider, prompter auth.Prompter) (auth.Credential, error) {
+	// Try to auto-detect existing credentials
+	value, err := provider.CheckSubscription()
+	if err == nil {
+		// Found existing credentials
+		prompter.Print("Found existing subscription credentials.")
+		if validateErr := provider.ValidateSubscription(value); validateErr != nil {
+			return auth.Credential{}, fmt.Errorf("invalid credentials: %w", validateErr)
+		}
+		return auth.Credential{
+			Type:  auth.CredentialTypeSubscription,
+			Value: value,
+		}, nil
 	}
 
-	fmt.Println()
-	fmt.Println("Authentication successful! Credentials stored in macOS Keychain.")
-	return nil
+	// No existing credentials - show instructions and prompt for manual entry
+	prompter.Print(err.Error())
+	prompter.Print("")
+
+	value, err = prompter.PromptSecret("Paste your credential: ")
+	if err != nil {
+		return auth.Credential{}, fmt.Errorf("read credential: %w", err)
+	}
+
+	if err := provider.ValidateSubscription(value); err != nil {
+		return auth.Credential{}, fmt.Errorf("invalid credential: %w", err)
+	}
+
+	return auth.Credential{
+		Type:  auth.CredentialTypeSubscription,
+		Value: value,
+	}, nil
+}
+
+// handleAPIKeyAuth handles API key authentication.
+func handleAPIKeyAuth(provider auth.Provider, prompter auth.Prompter) (auth.Credential, error) {
+	info := provider.Info()
+
+	prompter.Print(fmt.Sprintf("Enter your %s API key.", info.Name))
+	prompter.Print("")
+
+	value, err := prompter.PromptSecret("API key: ")
+	if err != nil {
+		return auth.Credential{}, fmt.Errorf("read API key: %w", err)
+	}
+
+	if err := provider.ValidateAPIKey(value); err != nil {
+		return auth.Credential{}, fmt.Errorf("invalid API key: %w", err)
+	}
+
+	return auth.Credential{
+		Type:  auth.CredentialTypeAPIKey,
+		Value: value,
+	}, nil
 }

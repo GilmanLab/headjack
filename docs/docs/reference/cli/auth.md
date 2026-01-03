@@ -16,7 +16,14 @@ hjk auth <subcommand>
 
 ## Description
 
-Runs the agent-specific authentication flow and stores credentials securely in the macOS Keychain. These credentials are automatically injected into containers when running agents with `hjk run --agent`.
+Configures agent authentication and stores credentials securely in the system keychain. These credentials are automatically injected into containers when running agents with `hjk run --agent`.
+
+Each agent supports two authentication methods:
+
+| Method | Description | Billing |
+|--------|-------------|---------|
+| **Subscription** | OAuth tokens from CLI tools | Uses your existing subscription (Claude Pro/Max, ChatGPT Plus/Pro, Gemini subscription) |
+| **API Key** | Direct API keys | Pay-per-use API billing |
 
 ## Subcommands
 
@@ -28,14 +35,23 @@ Configure Claude Code authentication for use in Headjack containers.
 hjk auth claude
 ```
 
-This command runs the Claude setup-token flow which:
+Prompts you to choose between:
 
-1. Displays a URL to open in your browser
-2. Prompts you to log in with your Anthropic account
-3. Presents a code to enter back in the terminal
-4. Stores the resulting OAuth token securely in macOS Keychain
+1. **Subscription**: Uses your Claude Pro/Max subscription via OAuth token
+2. **API Key**: Uses an Anthropic API key for pay-per-use billing
 
-The stored token uses your Claude Pro/Max subscription rather than API billing.
+**Subscription flow**:
+
+You must manually obtain the OAuth token:
+
+1. Run `claude setup-token` in a separate terminal
+2. Complete the browser login flow
+3. Copy the token (starts with `sk-ant-`)
+4. Paste it when prompted by `hjk auth claude`
+
+**API Key flow**:
+
+Enter your Anthropic API key directly (starts with `sk-ant-api`).
 
 ### hjk auth gemini
 
@@ -45,11 +61,22 @@ Configure Gemini CLI authentication for use in Headjack containers.
 hjk auth gemini
 ```
 
-This command reads existing Gemini CLI credentials and stores them securely in the macOS Keychain. You must first authenticate with Gemini CLI by running `gemini` and completing the Google OAuth login flow.
+Prompts you to choose between:
 
-The stored credentials use your Google AI Pro/Ultra subscription rather than API billing.
+1. **Subscription**: Uses your Google AI subscription via OAuth credentials
+2. **API Key**: Uses a Google AI API key for pay-per-use billing
 
-**Prerequisites**: Run `gemini` on your host machine first to complete the OAuth flow.
+**Subscription flow**:
+
+Automatically reads existing credentials from `~/.gemini/` if available. If not found:
+
+1. Run `gemini` on your host machine
+2. Complete the Google OAuth login
+3. Run `hjk auth gemini` again
+
+**API Key flow**:
+
+Enter your Google AI API key directly (starts with `AIza`).
 
 ### hjk auth codex
 
@@ -59,39 +86,69 @@ Configure OpenAI Codex CLI authentication for use in Headjack containers.
 hjk auth codex
 ```
 
-This command runs the Codex login flow which:
+Prompts you to choose between:
 
-1. Opens a browser to localhost:1455 for ChatGPT OAuth
-2. Prompts you to log in with your ChatGPT account
-3. Creates auth.json at `~/.codex/auth.json`
-4. Stores the auth.json contents securely in macOS Keychain
+1. **Subscription**: Uses your ChatGPT Plus/Pro/Team subscription via OAuth
+2. **API Key**: Uses an OpenAI API key for pay-per-use billing
 
-The stored credentials use your ChatGPT Plus/Pro/Team/Enterprise subscription rather than API billing.
+**Subscription flow**:
+
+Automatically reads existing credentials from `~/.codex/auth.json` if available. If not found:
+
+1. Run `codex login` on your host machine
+2. Complete the OAuth flow in your browser
+3. Run `hjk auth codex` again
+
+**API Key flow**:
+
+Enter your OpenAI API key directly (starts with `sk-`).
 
 ## Examples
 
 ```bash
-# Set up Claude Code authentication
+# Set up Claude Code with subscription
 hjk auth claude
+# Select option 1, then paste your OAuth token
 
-# Set up Gemini CLI authentication (after running 'gemini' first)
+# Set up Claude Code with API key
+hjk auth claude
+# Select option 2, then enter your Anthropic API key
+
+# Set up Gemini CLI (after running 'gemini' first)
 hjk auth gemini
 
-# Set up Codex CLI authentication
+# Set up Codex CLI (after running 'codex login' first)
 hjk auth codex
 ```
 
 ## Security
 
-All credentials are stored in the macOS Keychain, which provides:
+All credentials are stored in the system's secure credential store:
+
+| Platform | Backend |
+|----------|---------|
+| macOS | Keychain |
+| Linux (desktop) | GNOME Keyring / KDE Wallet |
+| Linux (headless) | Kernel keyring or encrypted file |
+| Windows | Credential Manager |
+
+Security properties:
 
 - Encryption at rest
-- Access control via macOS security policies
-- Integration with Touch ID and Apple Watch unlock
-- Automatic locking when the system sleeps
+- Access control via OS security policies
+- Credentials never written to disk in plaintext
 
-Credentials are never written to disk in plaintext.
+## Environment Variables
+
+When injected into containers, credentials are set via environment variables:
+
+| Agent | Subscription Env Var | API Key Env Var |
+|-------|---------------------|-----------------|
+| Claude | `CLAUDE_CODE_OAUTH_TOKEN` | `ANTHROPIC_API_KEY` |
+| Gemini | `GEMINI_OAUTH_CREDS` | `GEMINI_API_KEY` |
+| Codex | `CODEX_AUTH_JSON` | `OPENAI_API_KEY` |
 
 ## See Also
 
 - [hjk run](run.md) - Use authenticated agents with `--agent` flag
+- [Authentication](../../explanation/authentication.md) - How credential storage works

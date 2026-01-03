@@ -6,15 +6,22 @@ description: How to set up authentication for Claude, Gemini, and Codex agents
 
 # How to Authenticate Agents
 
-Set up authentication so Headjack containers can use your AI subscriptions. All credentials are stored securely in macOS Keychain and automatically injected into containers at runtime.
+Set up authentication so Headjack containers can use your AI subscriptions or API keys. All credentials are stored securely in the system keychain and automatically injected into containers at runtime.
 
 ## Prerequisites
 
 - Headjack installed
-- The CLI for your chosen agent installed:
-  - Claude Code (`claude` command) with Claude Pro or Max subscription
-  - Gemini CLI (`gemini` command) with Google AI Pro or Ultra subscription
-  - OpenAI Codex CLI (`codex` command) with ChatGPT Plus, Pro, Team, or Enterprise subscription
+- For **subscription** authentication: The CLI for your chosen agent installed and a valid subscription
+- For **API key** authentication: An API key from the provider
+
+## Authentication Methods
+
+Each agent supports two authentication methods:
+
+| Method | Billing | Best For |
+|--------|---------|----------|
+| **Subscription** | Uses your existing subscription (Claude Pro/Max, ChatGPT Plus/Pro, Gemini) | Users with active subscriptions |
+| **API Key** | Pay-per-use API billing | Users without subscriptions or who prefer usage-based billing |
 
 ## Claude
 
@@ -24,27 +31,45 @@ Run the authentication command:
 hjk auth claude
 ```
 
-A URL will be displayed. Open it in your browser, log in with your Anthropic account, and enter the displayed code back in the terminal when prompted.
+Choose your authentication method when prompted:
+
+### Subscription (Claude Pro/Max)
+
+1. Select option 1
+2. In a **separate terminal**, run `claude setup-token`
+3. Complete the browser login flow
+4. Copy the token (starts with `sk-ant-`)
+5. Paste it when prompted
+
+### API Key
+
+1. Select option 2
+2. Enter your Anthropic API key (starts with `sk-ant-api`)
 
 ## Gemini
 
-Gemini requires authenticating with the Gemini CLI first:
-
-```bash
-gemini
-```
-
-Complete the Google OAuth login in your browser. Verify the credentials were created:
-
-```bash
-ls ~/.gemini/oauth_creds.json ~/.gemini/google_accounts.json
-```
-
-Then store the credentials in Headjack:
+Run the authentication command:
 
 ```bash
 hjk auth gemini
 ```
+
+Choose your authentication method when prompted:
+
+### Subscription (Google AI)
+
+If you have existing Gemini CLI credentials (`~/.gemini/`), they are automatically detected.
+
+If not found:
+
+1. Run `gemini` in a separate terminal
+2. Complete the Google OAuth login
+3. Run `hjk auth gemini` again
+
+### API Key
+
+1. Select option 2
+2. Enter your Google AI API key (starts with `AIza`)
 
 ## Codex
 
@@ -54,7 +79,22 @@ Run the authentication command:
 hjk auth codex
 ```
 
-A browser window opens to `localhost:1455` for ChatGPT OAuth. Log in and complete the flow, then return to the terminal.
+Choose your authentication method when prompted:
+
+### Subscription (ChatGPT Plus/Pro/Team)
+
+If you have existing Codex CLI credentials (`~/.codex/auth.json`), they are automatically detected.
+
+If not found:
+
+1. Run `codex login` in a separate terminal
+2. Complete the OAuth flow in your browser
+3. Run `hjk auth codex` again
+
+### API Key
+
+1. Select option 2
+2. Enter your OpenAI API key (starts with `sk-`)
 
 ## Verification
 
@@ -66,12 +106,21 @@ hjk run my-feature --agent claude   # or gemini, codex
 
 The agent should authenticate without prompting for login.
 
+## Switching Authentication Methods
+
+To switch between subscription and API key:
+
+```bash
+hjk auth claude   # Select the other option
+hjk recreate my-feature   # Recreate container with new credentials
+```
+
 ## Notes
 
-- Credentials use your subscription, not API billing
-- Tokens are stored under the service `com.headjack.cli` in macOS Keychain
+- Subscription credentials use your subscription, not API billing
+- API key credentials are billed per-use through the provider's API
+- Credentials are stored in the system keychain (macOS Keychain, GNOME Keyring, etc.)
 - Re-run the auth command if authentication fails or tokens expire
-- For Gemini, re-run both `gemini` and `hjk auth gemini` to refresh credentials
 
 ## Related
 

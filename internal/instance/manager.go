@@ -810,7 +810,7 @@ func (m *Manager) CreateSession(ctx context.Context, instanceID string, cfg *Cre
 	}
 
 	// Run agent-specific setup before starting the session
-	if setupErr := m.runAgentSetup(ctx, entry.ContainerID, sessionType, cfg.Env); setupErr != nil {
+	if setupErr := m.runAgentSetup(ctx, entry.ContainerID, sessionType, cfg.Env, cfg.RequiresAgentSetup); setupErr != nil {
 		return nil, fmt.Errorf("agent setup: %w", setupErr)
 	}
 
@@ -874,12 +874,13 @@ func (m *Manager) CreateSession(ctx context.Context, instanceID string, cfg *Cre
 
 // runAgentSetup performs agent-specific setup before starting a session.
 // For Claude, this creates the config file needed to skip onboarding.
-// For Gemini, this writes OAuth credentials to the expected file location.
-func (m *Manager) runAgentSetup(ctx context.Context, containerID string, sessionType catalog.SessionType, env []string) error {
+// For Gemini/Codex with subscription auth, this writes OAuth credentials to file locations.
+// API key auth skips file setup since credentials are passed via environment variables.
+func (m *Manager) runAgentSetup(ctx context.Context, containerID string, sessionType catalog.SessionType, env []string, requiresSetup bool) error {
 	switch sessionType {
 	case catalog.SessionTypeClaude:
-		// Create ~/.claude.json with hasCompletedOnboarding to skip interactive setup.
-		// This is required for OAuth token authentication to work in headless environments.
+		// Always create ~/.claude.json with hasCompletedOnboarding to skip interactive setup.
+		// This is required for both OAuth token and API key authentication in headless environments.
 		// See: https://github.com/anthropics/claude-code/issues/8938
 		setupCmd := `mkdir -p ~/.claude && echo '{"hasCompletedOnboarding":true}' > ~/.claude.json`
 		return m.runtime.Exec(ctx, containerID, container.ExecConfig{
@@ -887,7 +888,11 @@ func (m *Manager) runAgentSetup(ctx context.Context, containerID string, session
 		})
 
 	case catalog.SessionTypeGemini:
-		// Write Gemini config files from env vars.
+		// Skip file setup for API key auth - credentials are in GEMINI_API_KEY env var
+		if !requiresSetup {
+			return nil
+		}
+		// Write Gemini config files from env vars for subscription auth.
 		// GEMINI_OAUTH_CREDS contains JSON with oauth_creds and google_accounts.
 		// We also write a minimal settings.json to set the auth type.
 		setupCmd := `mkdir -p ~/.gemini && \
@@ -900,7 +905,11 @@ echo '{"security":{"auth":{"selectedType":"oauth-personal"}}}' > ~/.gemini/setti
 		})
 
 	case catalog.SessionTypeCodex:
-		// Write Codex auth.json from env var.
+		// Skip file setup for API key auth - credentials are in OPENAI_API_KEY env var
+		if !requiresSetup {
+			return nil
+		}
+		// Write Codex auth.json from env var for subscription auth.
 		// CODEX_AUTH_JSON contains the contents of ~/.codex/auth.json.
 		setupCmd := `mkdir -p ~/.codex && echo "$CODEX_AUTH_JSON" > ~/.codex/auth.json`
 		return m.runtime.Exec(ctx, containerID, container.ExecConfig{

@@ -115,60 +115,73 @@ func buildSessionConfig(cmd *cobra.Command, flags *runFlags, args []string) (*in
 		}
 	}
 
-	// Inject authentication tokens from keychain
-	if err := injectAuthToken(agent, cfg); err != nil {
+	// Inject authentication credentials from keychain
+	if err := injectAuthCredential(agent, cfg); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
 }
 
-// injectAuthToken retrieves the auth token for the agent and adds it to the session config.
-func injectAuthToken(agent string, cfg *instance.CreateSessionConfig) error {
+// agentAuthSpec maps agent names to their providers.
+type agentAuthSpec struct {
+	provider         func() auth.Provider
+	notConfiguredMsg string
+}
+
+var agentAuthSpecs = map[string]agentAuthSpec{
+	"claude": {
+		provider:         func() auth.Provider { return auth.NewClaudeProvider() },
+		notConfiguredMsg: "claude auth not configured: run 'hjk auth claude' first",
+	},
+	"gemini": {
+		provider:         func() auth.Provider { return auth.NewGeminiProvider() },
+		notConfiguredMsg: "gemini auth not configured: run 'hjk auth gemini' first",
+	},
+	"codex": {
+		provider:         func() auth.Provider { return auth.NewCodexProvider() },
+		notConfiguredMsg: "codex auth not configured: run 'hjk auth codex' first",
+	},
+}
+
+// injectAuthCredential retrieves the credential for the agent and configures the session.
+func injectAuthCredential(agent string, cfg *instance.CreateSessionConfig) error {
 	spec, ok := agentAuthSpecs[agent]
 	if !ok {
 		return nil
 	}
 
-	storage := keychain.New()
-	credential, err := spec.provider().Get(storage)
+	storage, err := keychain.New()
 	if err != nil {
-		if errors.Is(err, keychain.ErrNotFound) {
-			return errors.New(spec.notConfigured)
-		}
-		return fmt.Errorf("%s: %w", spec.errPrefix, err)
+		return fmt.Errorf("initialize credential storage: %w", err)
 	}
 
-	cfg.Env = append(cfg.Env, spec.envVar+"="+credential)
+	provider := spec.provider()
+	cred, err := provider.Load(storage)
+	if err != nil {
+		if errors.Is(err, keychain.ErrNotFound) {
+			return errors.New(spec.notConfiguredMsg)
+		}
+		return fmt.Errorf("load %s credential: %w", agent, err)
+	}
+
+	info := provider.Info()
+
+	// Set environment variable based on credential type
+	switch cred.Type {
+	case auth.CredentialTypeSubscription:
+		cfg.Env = append(cfg.Env, info.SubscriptionEnvVar+"="+cred.Value)
+		cfg.CredentialType = string(auth.CredentialTypeSubscription)
+		cfg.RequiresAgentSetup = info.RequiresContainerSetup
+	case auth.CredentialTypeAPIKey:
+		cfg.Env = append(cfg.Env, info.APIKeyEnvVar+"="+cred.Value)
+		cfg.CredentialType = string(auth.CredentialTypeAPIKey)
+		cfg.RequiresAgentSetup = false // API keys don't need file setup
+	default:
+		return fmt.Errorf("unknown credential type: %s", cred.Type)
+	}
+
 	return nil
-}
-
-type agentAuthSpec struct {
-	provider      func() auth.Provider
-	envVar        string
-	notConfigured string
-	errPrefix     string
-}
-
-var agentAuthSpecs = map[string]agentAuthSpec{
-	"claude": {
-		provider:      func() auth.Provider { return auth.NewClaudeProvider() },
-		envVar:        "CLAUDE_CODE_OAUTH_TOKEN",
-		notConfigured: "claude auth not configured: run 'headjack auth claude' first",
-		errPrefix:     "get claude token",
-	},
-	"gemini": {
-		provider:      func() auth.Provider { return auth.NewGeminiProvider() },
-		envVar:        "GEMINI_OAUTH_CREDS",
-		notConfigured: "gemini auth not configured: run 'headjack auth gemini' first",
-		errPrefix:     "get gemini credentials",
-	},
-	"codex": {
-		provider:      func() auth.Provider { return auth.NewCodexProvider() },
-		envVar:        "CODEX_AUTH_JSON",
-		notConfigured: "codex auth not configured: run 'headjack auth codex' first",
-		errPrefix:     "get codex credentials",
-	},
 }
 
 func runRunCmd(cmd *cobra.Command, args []string) error {
