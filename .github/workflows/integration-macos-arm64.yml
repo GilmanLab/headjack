@@ -36,26 +36,24 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Verify Apple Containerization
-        run: |
-          if ! command -v container &>/dev/null; then
-            echo "::error::Apple container CLI not found"
-            exit 1
-          fi
-          container --version
+      - name: Set up Docker
+        uses: docker/setup-docker-action@b60f85385d03ac8acfca4e9bd9c82ee879644fbb # v4
 
       - name: Log in to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | container registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull container image
-        run: container image pull ghcr.io/gilmanlab/headjack:base
+        run: docker pull ghcr.io/gilmanlab/headjack:base
 
       - name: Build hjk binary
         run: go build -o hjk .
 
       - name: Run integration tests
         env:
-          HEADJACK_TEST_RUNTIME: apple
+          HEADJACK_TEST_RUNTIME: docker
           HJK_BINARY: ${{ github.workspace }}/hjk
         run: go test -v -tags=integration -timeout=30m ./integration/...
