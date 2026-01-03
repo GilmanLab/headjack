@@ -62,7 +62,7 @@ release:
 homebrew_casks:
   - repository:
       owner: GilmanLab
-      name: homebrew-tap
+      name: tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Casks
