@@ -37,12 +37,6 @@ Removes an instance entirely. This command:
 |------|-------|------|---------|-------------|
 | `--force` | `-f` | bool | `false` | Skip confirmation prompt |
 
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

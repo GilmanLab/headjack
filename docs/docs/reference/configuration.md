@@ -37,7 +37,6 @@ Default values applied when creating new instances.
 |-----|------|---------|-------------|
 | `default.agent` | string | `""` (empty) | Default agent to use. Valid values: `claude`, `gemini`, `codex`. Empty means no default. |
 | `default.base_image` | string | `ghcr.io/gilmanlab/headjack:base` | Container image to use for instances. Available variants: `:base` (minimal), `:systemd` (with init), `:dind` (with Docker). |
-| `default.multiplexer` | string | `tmux` | Terminal multiplexer for session management. Valid values: `tmux`, `zellij`. |
 
 ### agents
 
@@ -76,7 +75,6 @@ A complete configuration file with all options:
 default:
   agent: claude
   base_image: ghcr.io/gilmanlab/headjack:base
-  multiplexer: tmux
 
 agents:
   claude:
@@ -118,7 +116,6 @@ hjk config storage.worktrees
 
 ```bash
 hjk config default.agent claude
-hjk config default.multiplexer zellij
 hjk config runtime.name apple
 ```
 
@@ -140,7 +137,6 @@ The following environment variables override their corresponding configuration k
 |---------------------|-------------------|
 | `HEADJACK_DEFAULT_AGENT` | `default.agent` |
 | `HEADJACK_BASE_IMAGE` | `default.base_image` |
-| `HEADJACK_MULTIPLEXER` | `default.multiplexer` |
 | `HEADJACK_WORKTREE_DIR` | `storage.worktrees` |
 
 ## Validation
@@ -149,7 +145,6 @@ Headjack validates configuration values when loading and setting them:
 
 - `default.agent` must be one of: `claude`, `gemini`, `codex` (or empty)
 - `default.base_image` is required and cannot be empty
-- `default.multiplexer` must be one of: `tmux`, `zellij`
 - `runtime.name` must be one of: `podman`, `apple`
 - All storage paths are required
 

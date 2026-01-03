@@ -1,6 +1,6 @@
 // Package multiplexer provides an abstraction over terminal multiplexer operations.
 // It defines a generic interface that can be implemented by different backends
-// (Zellij, tmux, etc.) to manage persistent, attachable terminal sessions.
+// (e.g., tmux) to manage persistent, attachable terminal sessions.
 package multiplexer
 
 import (

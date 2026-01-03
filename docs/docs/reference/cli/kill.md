@@ -26,14 +26,6 @@ The argument must be in the format `<branch>/<session>`, where branch is the ins
 |----------|-------------|
 | `branch/session` | Combined branch and session name separated by `/` (required) |
 
-## Flags
-
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

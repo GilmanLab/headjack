@@ -33,12 +33,6 @@ Reads from the session's log file, useful for checking on detached agents withou
 | `--lines` | `-n` | int | `100` | Number of lines to show |
 | `--full` | | bool | `false` | Show entire log from session start |
 
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

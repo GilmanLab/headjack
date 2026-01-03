@@ -22,8 +22,8 @@ The command uses an MRU strategy:
 If no sessions exist for the resolved scope, the command errors with a message
 suggesting 'hjk run' to create one.
 
-To detach from a session without terminating it, use the Zellij keybinding
-(default: Ctrl+O, d). This returns you to your host terminal while the
+To detach from a session without terminating it, use the tmux detach keybinding
+(default: Ctrl+B, d). This returns you to your host terminal while the
 session continues running.`,
 	Example: `  # Attach to whatever you were last working on
   hjk attach

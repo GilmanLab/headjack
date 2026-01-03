@@ -43,12 +43,6 @@ If an instance exists but is stopped, it is automatically restarted before creat
 | `--base` | | string | | Override the default base image |
 | `--detached` | `-d` | bool | `false` | Create session but do not attach (run in background) |
 
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Examples
 
 ```bash

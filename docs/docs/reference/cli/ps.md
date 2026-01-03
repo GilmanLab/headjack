@@ -34,12 +34,6 @@ Use `--all` to list instances across all repositories (only applies when listing
 |------|-------|------|---------|-------------|
 | `--all` | `-a` | bool | `false` | List instances across all repositories |
 
-### Inherited Flags
-
-| Flag | Type | Description |
-|------|------|-------------|
-| `--multiplexer` | string | Terminal multiplexer to use (`tmux`, `zellij`) |
-
 ## Output
 
 ### Instance Listing

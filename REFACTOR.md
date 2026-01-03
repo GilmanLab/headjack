@@ -4,7 +4,7 @@ This document provides context for implementing the session-based refactor. Dele
 
 ## Summary
 
-We are introducing **sessions** as a new abstraction layer between users and instances. A session is a persistent, attachable/detachable process (shell, agent CLI, etc.) running within an instance, managed by Zellij.
+We are introducing **sessions** as a new abstraction layer between users and instances. A session is a persistent, attachable/detachable process (shell, agent CLI, etc.) running within an instance, managed by tmux.
 
 ## Why
 
@@ -21,7 +21,7 @@ The original design allowed multiple `resume` calls to the same instance but pro
 | Concept | Definition |
 |---------|------------|
 | Instance | Git worktree + container (unchanged) |
-| Session | A Zellij-managed process within an instance (new) |
+| Session | A tmux-managed process within an instance (new) |
 
 An instance can have zero or more sessions. Sessions persist across detach/attach cycles.
 
@@ -82,7 +82,7 @@ This is implemented by teeing stdout/stderr when spawning the session process.
 
 ### Technology
 
-Sessions are implemented using [Zellij](https://zellij.dev/). Zellij handles:
+Sessions are implemented using [tmux](https://github.com/tmux/tmux). tmux handles:
 - Terminal multiplexing
 - Attach/detach mechanics
 - Process lifecycle within sessions
@@ -119,7 +119,7 @@ After:
           "id": "sess-abc",
           "name": "happy-panda",
           "type": "claude",
-          "zellij_session": "hjk-<instance-id>-sess-abc",
+          "tmux_session": "hjk-<instance-id>-sess-abc",
           "created_at": "2025-12-30T10:00:00Z",
           "last_accessed": "2025-12-30T14:30:00Z"
         }
@@ -135,16 +135,16 @@ After:
 
 - `internal/cmd/` — Replace `new.go`, `resume.go`, `list.go` with `run.go`, `attach.go`, `ps.go`, `logs.go`, `kill.go`
 - `internal/catalog/` — Add session tracking, `last_accessed` updates
-- `internal/instance/` — Session CRUD operations, Zellij integration, log file management
+- `internal/instance/` — Session CRUD operations, tmux integration, log file management
 
 ### May Need Changes
 
-- `internal/container/` — Ensure Zellij is available in containers
-- `docs/designs/base-image.md` — Add Zellij to base image
+- `internal/container/` — Ensure tmux is available in containers
+- `docs/designs/base-image.md` — Add tmux to base image
 
 ### New Code Needed
 
-- Zellij interaction layer (create session, attach, list, kill)
+- tmux interaction layer (create session, attach, list, kill)
 - Session name generator (word-based, Docker-style)
 - Session logging layer (tee output to log files, read logs for `hjk logs`)
 
