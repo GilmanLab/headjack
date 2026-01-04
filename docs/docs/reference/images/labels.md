@@ -129,7 +129,7 @@ LABEL io.headjack.docker.flags="privileged=true"
 | Image | Value |
 |-------|-------|
 | `base` | Not set |
-| `systemd` | `privileged=true` |
+| `systemd` | `privileged=true cgroupns=host volume=/sys/fs/cgroup:/sys/fs/cgroup:rw` |
 | `dind` | Inherited from `systemd` |
 
 ---
@@ -185,7 +185,7 @@ RUN systemctl enable myservice
 # Re-declare labels (not inherited)
 LABEL io.headjack.init="/lib/systemd/systemd"
 LABEL io.headjack.podman.flags="systemd=always"
-LABEL io.headjack.docker.flags="privileged=true"
+LABEL io.headjack.docker.flags="privileged=true cgroupns=host volume=/sys/fs/cgroup:/sys/fs/cgroup:rw"
 ```
 
 ### Creating a Custom Init Image
@@ -222,7 +222,7 @@ Example output:
 {
   "io.headjack.init": "/lib/systemd/systemd",
   "io.headjack.podman.flags": "systemd=always",
-  "io.headjack.docker.flags": "privileged=true"
+  "io.headjack.docker.flags": "privileged=true cgroupns=host volume=/sys/fs/cgroup:/sys/fs/cgroup:rw"
 }
 ```
 
