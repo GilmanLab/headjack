@@ -53,7 +53,7 @@ VOLUME ["/sys/fs/cgroup"]
 # - io.headjack.docker.flags: Space-separated key=value pairs for Docker flags
 LABEL io.headjack.init="/lib/systemd/systemd"
 LABEL io.headjack.podman.flags="systemd=always"
-LABEL io.headjack.docker.flags="privileged=true"
+LABEL io.headjack.docker.flags="privileged=true cgroupns=host volume=/sys/fs/cgroup:/sys/fs/cgroup:rw"
 
 # systemd as init system
 CMD ["/lib/systemd/systemd"]
